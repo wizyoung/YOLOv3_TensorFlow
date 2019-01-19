@@ -2,7 +2,7 @@
 
 ### 1. Introduction
 
-This is my implementation of [YOLOv3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) in pure TensorFlow. It contains the full pipeline of training and evaluation on your own dataset. The keys features of this repo are:
+This is my implementation of [YOLOv3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) in pure TensorFlow. It contains the full pipeline of training and evaluation on your own dataset. The key features of this repo are:
 
 - Efficient tf.data pipeline
 - Weights converter (converting pretrained darknet weights on COCO dataset to TensorFlow checkpoint.)
@@ -52,7 +52,9 @@ Some results:
 
 ![](https://github.com/wizyoung/YOLOv3_TensorFlow/blob/master/data/demo_data/results/kite.jpg?raw=true)
 
-(The kite result is under image resolution 1344x896)
+Compare the kite detection results with TensorFlow's offical API result [here](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/img/kites_detections_output.jpg).
+
+(The kite detection result is under input image resolution 1344x896)
 
 #### 5. Inference speed
 
@@ -70,7 +72,7 @@ How fast is the inference speed? With images scaled to 416*416:
 
 (1) annotation file
 
-Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_absolute_path box_1 box_2 ... box_n`. Box_format: `label_index x_min y_min x_max y_max`.
+Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_absolute_path box_1 box_2 ... box_n`. Box_format: `label_index x_min y_min x_max y_max`.(The origin of coordinates is at the left top corner.)
 
 For example:
 
@@ -184,7 +186,7 @@ There are many skills you can try during training:
 
 (1) Data augmentation: You can implement your data augmentation like color jittering under `data_augmentation` method in `./utils/data_utils.py`.
 
-(2) Mutil-scale training: You can change the input image scales periodically like the author does in the original paper.
+(2) Mutil-scale training: You can change the input image scales (i.e. different input resolutions) periodically like the author does in the original paper.
 
 -------
 
