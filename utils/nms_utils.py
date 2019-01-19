@@ -63,7 +63,6 @@ def py_nms(boxes, scores, max_boxes=50, iou_thresh=0.5):
     x2 = boxes[:, 2]
     y2 = boxes[:, 3]
 
-    #TODO: +1?
     areas = (x2 - x1) * (y2 - y1)
     order = scores.argsort()[::-1]
 

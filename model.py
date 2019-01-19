@@ -215,7 +215,6 @@ class yolov3(object):
         best_iou = tf.reduce_max(iou, axis=-1)
 
         # get_ignore_mask
-        # TODO: some explainments
         ignore_mask = tf.cast(best_iou < 0.5, tf.float32)
         # shape: [N, 13, 13, 3, 1]
         ignore_mask = tf.expand_dims(ignore_mask, -1)
@@ -321,8 +320,3 @@ class yolov3(object):
         iou = intersect_area / (pred_box_area + true_box_area - intersect_area)
 
         return iou
-
-
-
-
-

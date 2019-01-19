@@ -15,7 +15,6 @@ def parse_line(line):
             dimension are [x_min, y_min, x_max, y_max]
     '''
     s = line.strip().split(' ')
-    # TODO: need reform
     pic_path = s[0]
     s = s[1:]
     box_cnt = len(s) / 5
@@ -75,7 +74,6 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     # (width, height)
     box_sizes = boxes[:, 2:4] - boxes[:, 0:2]
 
-    # TODO: NUM_CLASS, IMAGE_SHAPE
     # [13, 13, 3, 3+num_class]
     y_true_13 = np.zeros((img_size[1] / 32, img_size[0] / 32, 3, 5 + class_num), np.float32)
     y_true_26 = np.zeros((img_size[1] / 16, img_size[0] / 16, 3, 5 + class_num), np.float32)
