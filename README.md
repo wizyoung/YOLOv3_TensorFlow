@@ -5,11 +5,11 @@
 This is my implementation of [YOLOv3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) in pure TensorFlow. It contains the full pipeline of training and evaluation on your own dataset. The keys features of this repo are:
 
 - Efficient tf.data pipeline
-
 - Weights converter (converting pretrained darknet weights on COCO dataset to TensorFlow checkpoint.)
 - Extremely fast GPU non maximum supression.
 - Full training pipeline.
 - Kmeans algorithm to select prior anchor boxes.
+- [ ] Multi-GPU training with sync batch norm. (on working)
 
 ### 2. Requirements
 
@@ -117,8 +117,7 @@ Using `train.py`. The parameters are as following:
 
 ```shell
 $ python train.py -h
-usage: train.py [-h] [--train_file TRAIN_FILE] 
-				[--val_file VAL_FILE]
+usage: train.py [-h] [--train_file TRAIN_FILE] [--val_file VAL_FILE]
                 [--restore_path RESTORE_PATH] 
                 [--save_dir SAVE_DIR]
                 [--log_dir LOG_DIR] 
@@ -161,8 +160,7 @@ Using `eval.py` to evaluate the validation or test dataset. The parameters are a
 
 ```shell
 $ python eval.py -h
-usage: eval.py [-h] [--eval_file EVAL_FILE] 
-			   [--restore_path RESTORE_PATH]
+usage: eval.py [-h] [--eval_file EVAL_FILE] [--restore_path RESTORE_PATH]
                [--anchor_path ANCHOR_PATH] 
                [--class_name_path CLASS_NAME_PATH]
                [--batch_size BATCH_SIZE]
@@ -187,10 +185,6 @@ There are many skills you can try during training:
 (1) Data augmentation: You can implement your data augmentation like color jittering under `data_augmentation` method in `./utils/data_utils.py`.
 
 (2) Mutil-scale training: You can change the input image scales periodically like the author does in the original paper.
-
-### 9. TODO
-
-- [ ] Multi-GPU training with sync batch norm. 
 
 -------
 

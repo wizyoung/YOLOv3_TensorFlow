@@ -261,6 +261,6 @@ with tf.Session() as sess:
                 writer.add_summary(make_summary('evaluation/val_recall', recall), global_step=epoch)
                 writer.add_summary(make_summary('evaluation/val_precision', precision), global_step=epoch)
 
-        # manually shuffle the training data in a new wpoch
+        # manually shuffle the training data in a new epoch
         shuffle_and_overwrite(args.train_file)
         sess.run(train_iterator.initializer)
