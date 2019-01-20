@@ -26,7 +26,7 @@ python convert_weight.py
 
 Then the converted TensorFlow checkpoint file will be saved to `./data/darknet_weights/` directory.
 
-You can also download the converted TensorFlow checkpoint file by me via [Google Drive link](https://drive.google.com/drive/folders/1mXbNgNxyXPi7JNsnBaxEv1-nWr7SVoQt?usp=sharing) and then place it to the same directory.
+You can also download the converted TensorFlow checkpoint file by me via [[Google Drive link](https://drive.google.com/drive/folders/1mXbNgNxyXPi7JNsnBaxEv1-nWr7SVoQt?usp=sharing)] or [[Github Release](https://github.com/wizyoung/YOLOv3_TensorFlow/releases/)]and then place it to the same directory.
 
 ### 4. Running demos
 
@@ -65,6 +65,10 @@ How fast is the inference speed? With images scaled to 416*416:
 | :-------------------- | :------: | :------: |
 | Darknet-53 (paper)    | Titan X  |    29    |
 | Darknet-53 (my impl.) | Titan XP |   ~23    |
+
+why is it so fast? Check the ImageNet classification result comparision from the paper:
+
+![](https://github.com/wizyoung/YOLOv3_TensorFlow/blob/master/docs/backbone.png?raw=true)
 
 ### 6. Training
 
@@ -180,13 +184,17 @@ recall: 0.927, precision: 0.945
 total_loss: 0.210, loss_xy: 0.010, loss_wh: 0.025, loss_conf: 0.125, loss_class: 0.050
 ```
 
-### 8. Other skills
+### 8. Other tricks
 
 There are many skills you can try during training:
 
 (1) Data augmentation: You can implement your data augmentation like color jittering under `data_augmentation` method in `./utils/data_utils.py`.
 
-(2) Mutil-scale training: You can change the input image scales (i.e. different input resolutions) periodically like the author does in the original paper.
+(2) Mixed up and label smoothing like what [Gluon-CV](https://github.com/dmlc/gluon-cv/tree/master/scripts/detection/yolo) does.
+
+(3) Normalizations like L2 norm.
+
+(4) Mutil-scale training: You can change the input image scales (i.e. different input resolutions) periodically like the author does in the original paper.
 
 -------
 
