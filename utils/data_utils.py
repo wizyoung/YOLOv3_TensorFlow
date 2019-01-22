@@ -95,11 +95,12 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     # [N]
     best_match_idx = np.argmax(iou, axis=1)
 
+    ratio_dict = {1.: 8., 2.: 16., 3.: 32.}
     for i, idx in enumerate(best_match_idx):
         # idx: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 2
         feature_map_group = 2 - idx / 3
         # scale ratio: 0,1,2 ==> 8; 3,4,5 ==> 16; 6,7,8 ==> 32
-        ratio = np.ceil((idx + 1) / 3.) * 8
+        ratio = ratio_dict[np.ceil((idx + 1) / 3.)]
         x = int(np.floor(box_centers[i, 0] / ratio))
         y = int(np.floor(box_centers[i, 1] / ratio))
         k = anchors_mask[feature_map_group].index(idx)
