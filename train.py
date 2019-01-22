@@ -119,6 +119,7 @@ handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
 # Selecting `feedable iterator` to switch between training dataset and validation dataset
 
 # manually shuffle the train txt file because tf.data.shuffle is soooo slow!!
+# you can google it for more details.
 shuffle_and_overwrite(args.train_file)
 train_dataset = tf.data.TextLineDataset(args.train_file)
 train_dataset = train_dataset.apply(tf.contrib.data.map_and_batch(
@@ -249,7 +250,7 @@ with tf.Session() as sess:
 
                     val_loss = list_add(val_loss, loss_)
 
-                # make sure there is at least ground truth an object in each image
+                # make sure there is at least one ground truth object in each image
                 # avoid divided by 0
                 recall = float(sum(true_positive_dict.values())) / (sum(true_labels_dict.values()) + 1e-6)
                 precision = float(sum(true_positive_dict.values())) / (sum(pred_labels_dict.values()) + 1e-6)

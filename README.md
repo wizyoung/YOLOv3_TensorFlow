@@ -56,7 +56,7 @@ Compare the kite detection results with TensorFlow's offical API result [here](h
 
 (The kite detection result is under input image resolution 1344x896)
 
-#### 5. Inference speed
+### 5. Inference speed
 
 How fast is the inference speed? With images scaled to 416*416:
 
@@ -70,9 +70,15 @@ why is it so fast? Check the ImageNet classification result comparision from the
 
 ![](https://github.com/wizyoung/YOLOv3_TensorFlow/blob/master/docs/backbone.png?raw=true)
 
-### 6. Training
+### 6. Model architecture
 
-#### 6.1 Data preparation 
+For better understanding of the model architecture, you can refer to the following picture. With great thanks to [Levio](https://blog.csdn.net/leviopku/article/details/82660381) for your excellent work!
+
+![](https://github.com/wizyoung/YOLOv3_TensorFlow/blob/master/docs/yolo_v3_architecture.png?raw=true)
+
+### 7. Training
+
+#### 7.1 Data preparation 
 
 (1) annotation file
 
@@ -117,7 +123,7 @@ The COCO dataset anchors offered by YOLO v3 author is placed at `./data/yolo_anc
 
 **NOTE: The yolo anchors should be scaled to the rescaled new image size. Suppose your image size is [W, H], and the image will be rescale to 416*416 as input, for each generated anchor [anchor_w, anchor_h], you should apply the transformation anchor_w = anchor_w / W * 416, anchor_h = anchor_g / H * 416.**
 
-#### 6.2 Training
+#### 7.2 Training
 
 Using `train.py`. The parameters are as following:
 
@@ -160,7 +166,7 @@ Second stage: Restore the weights from the first stage, then train the whole mod
 
 If you want to obtain good results in a short time like in 10 minutes. You can use the coco names but substitute several with real class names in your dataset. In this way you restore the whole pretrained COCO model and get a 80 class classification model, but you only care the class names from your dataset.
 
-### 7. Evaluation
+### 8. Evaluation
 
 Using `eval.py` to evaluate the validation or test dataset. The parameters are as following:
 
@@ -184,7 +190,7 @@ recall: 0.927, precision: 0.945
 total_loss: 0.210, loss_xy: 0.010, loss_wh: 0.025, loss_conf: 0.125, loss_class: 0.050
 ```
 
-### 8. Other tricks
+### 9. Other tricks
 
 There are many skills you can try during training:
 
