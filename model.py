@@ -108,7 +108,8 @@ class yolov3(object):
         # rescale to the original image scale
         box_centers = box_centers * ratio[::-1]
 
-        box_sizes = tf.exp(box_sizes) * rescaled_anchors
+        # avoid getting possible nan value with tf.clip_by_value
+        box_sizes = tf.clip_by_value(tf.exp(box_sizes), 1e-9, 50) * rescaled_anchors
         # rescale to the original image scale
         box_sizes = box_sizes * ratio[::-1]
 

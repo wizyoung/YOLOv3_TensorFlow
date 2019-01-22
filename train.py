@@ -262,6 +262,12 @@ with tf.Session() as sess:
                 writer.add_summary(make_summary('evaluation/val_recall', recall), global_step=epoch)
                 writer.add_summary(make_summary('evaluation/val_precision', precision), global_step=epoch)
 
+                writer.add_summary(make_summary('validation_statistics/total_loss', val_loss[0] / args.val_img_cnt), global_step=epoch)
+                writer.add_summary(make_summary('validation_statistics/loss_xy', val_loss[1] / args.val_img_cnt), global_step=epoch)
+                writer.add_summary(make_summary('validation_statistics/loss_wh', val_loss[2] / args.val_img_cnt), global_step=epoch)
+                writer.add_summary(make_summary('validation_statistics/loss_conf', val_loss[3] / args.val_img_cnt), global_step=epoch)
+                writer.add_summary(make_summary('validation_statistics/loss_class', val_loss[4] / args.val_img_cnt), global_step=epoch)
+
         # manually shuffle the training data in a new epoch
         shuffle_and_overwrite(args.train_file)
         sess.run(train_iterator.initializer)
