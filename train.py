@@ -70,7 +70,7 @@ parser.add_argument("--prefetech_buffer", type=int, default=3,
 parser.add_argument("--optimizer_name", type=str, default='adam',
                     help="The optimizer name. Chosen from [sgd, momentum, adam, rmsprop]")
 
-parser.add_argument("--save_optimizer", type=bool, default=False,
+parser.add_argument("--save_optimizer", type=lambda x: (str(x).lower() == 'true'), default=False,
                     help="Whether to save the optimizer parameters into the checkpoint file.")
 
 parser.add_argument("--learning_rate_init", type=float, default=1e-3,
