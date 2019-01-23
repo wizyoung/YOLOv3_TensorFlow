@@ -94,6 +94,16 @@ parser.add_argument("--restore_part", nargs='*', type=str, default=['yolov3/dark
 
 parser.add_argument("--update_part", nargs='*', type=str, default=['yolov3/yolov3_head'],
                     help="Partially restore part of the model for finetuning. Set [None] to train the whole model.")
+
+# warm up strategy
+parser.add_argument("--use_warm_up", type=lambda x: (str(x).lower() == 'true'), default=False,
+                    help="Whether to use warm up strategy.")
+
+parser.add_argument("--warm_up_lr", type=float, default=5e-5,
+                    help="Warm up learning rate.")
+
+parser.add_argument("--warm_up_epoch", type=int, default=5,
+                    help="Warm up training epoches.")
 args = parser.parse_args()
 
 # args params
@@ -181,7 +191,11 @@ tf.summary.scalar('train_batch_statistics/loss_conf', loss[3])
 tf.summary.scalar('train_batch_statistics/loss_class', loss[4])
 
 global_step = tf.Variable(0, trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
-learning_rate = config_learning_rate(args, global_step)
+if args.use_warm_up:
+    learning_rate = tf.cond(tf.less(global_step, args.train_batch_num * args.warm_up_epoch), 
+        lambda: args.warm_up_lr, lambda: config_learning_rate(args, global_step - args.train_batch_num * args.warm_up_epoch))
+else:
+    learning_rate = config_learning_rate(args, global_step)
 tf.summary.scalar('learning_rate', learning_rate)
 
 if not args.save_optimizer:

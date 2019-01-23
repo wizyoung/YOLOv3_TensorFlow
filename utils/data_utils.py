@@ -30,6 +30,9 @@ def parse_line(line):
 
 
 def resize_image_and_correct_boxes(img, boxes, img_size):
+    # convert gray scale image to 3-channel fake RGB image
+    if len(img) == 2:
+        img = np.expand_dims(img, -1)
     ori_height, ori_width = img.shape[:2]
     new_width, new_height = img_size
     # shape to (new_height, new_width)
@@ -91,7 +94,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     whs = maxs - mins
 
     # [N, 9]
-    iou = (whs[:, :, 0] * whs[:, :, 1]) / (box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :, 1])
+    iou = (whs[:, :, 0] * whs[:, :, 1]) / (box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :, 1] + 1e-10)
     # [N]
     best_match_idx = np.argmax(iou, axis=1)
 

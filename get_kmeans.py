@@ -130,8 +130,8 @@ if __name__ == '__main__':
         anchor_string += '{},{}, '.format(anchor[0], anchor[1])
     anchor_string = anchor_string[:-2]
 
-    print 'anchors are:'
-    print anchor_string
-    print 'the average iou is:'
-    print ave_iou
+    print('anchors are:')
+    print(anchor_string)
+    print('the average iou is:')
+    print(ave_iou)
 

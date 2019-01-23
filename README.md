@@ -150,6 +150,9 @@ usage: train.py [-h] [--train_file TRAIN_FILE] [--val_file VAL_FILE]
                 [--lr_lower_bound LR_LOWER_BOUND]
                 [--restore_part [RESTORE_PART [RESTORE_PART ...]]]
                 [--update_part [UPDATE_PART [UPDATE_PART ...]]]
+                [--update_part [UPDATE_PART [UPDATE_PART ...]]]
+                [--use_warm_up USE_WARM_UP] [--warm_up_lr WARM_UP_LR]
+                [--warm_up_epoch WARM_UP_EPOCH]
 ```
 
 Check the `train.py` for more details. You should set the parameters yourself. 

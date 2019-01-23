@@ -318,6 +318,6 @@ class yolov3(object):
         true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
 
         # [N, 13, 13, 3, V]
-        iou = intersect_area / (pred_box_area + true_box_area - intersect_area)
+        iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
 
         return iou

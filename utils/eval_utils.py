@@ -35,7 +35,7 @@ def calc_iou(pred_boxes, true_boxes):
     true_boxes_area = true_boxes_wh[..., 0] * true_boxes_wh[..., 1]
 
     # shape: [N, V]
-    iou = intersect_area / (pred_box_area + true_boxes_area - intersect_area)
+    iou = intersect_area / (pred_box_area + true_boxes_area - intersect_area + 1e-10)
 
     return iou
 
