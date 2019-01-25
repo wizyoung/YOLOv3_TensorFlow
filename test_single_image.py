@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from __future__ import division, print_function
+
 import tensorflow as tf
 import numpy as np
 import argparse
@@ -74,15 +76,3 @@ with tf.Session() as sess:
     cv2.imshow('Detection result', img_ori)
     cv2.imwrite('detection_result.jpg', img_ori)
     cv2.waitKey(0)
-
-
-
-
-
-
-
-
-
-
-
-

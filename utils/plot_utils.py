@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from __future__ import division, print_function
+
 import cv2
 import random
 

@@ -1,6 +1,8 @@
 # coding: utf-8
 # This script is modified from https://github.com/lars76/kmeans-anchor-boxes
 
+from __future__ import division, print_function
+
 import numpy as np
 
 def iou(box, clusters):
@@ -21,7 +23,7 @@ def iou(box, clusters):
     box_area = box[0] * box[1]
     cluster_area = clusters[:, 0] * clusters[:, 1]
 
-    iou_ = intersection / (box_area + cluster_area - intersection)
+    iou_ = intersection / (box_area + cluster_area - intersection + 1e-10)
 
     return iou_
 
@@ -96,7 +98,7 @@ def parse_anno(annotation_path):
     for line in anno:
         s = line.strip().split(' ')
         s = s[1:]
-        box_cnt = len(s) / 5
+        box_cnt = len(s) // 5
         for i in range(box_cnt):
             x_min, y_min, x_max, y_max = float(s[i*5+1]), float(s[i*5+2]), float(s[i*5+3]), float(s[i*5+4])
             width = x_max - x_min

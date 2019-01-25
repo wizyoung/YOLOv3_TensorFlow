@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from __future__ import division, print_function
+
 import numpy as np
 import tensorflow as tf
 import cv2
@@ -17,7 +19,7 @@ def parse_line(line):
     s = line.strip().split(' ')
     pic_path = s[0]
     s = s[1:]
-    box_cnt = len(s) / 5
+    box_cnt = len(s) // 5
     boxes = []
     labels = []
     for i in range(box_cnt):
@@ -78,9 +80,9 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     box_sizes = boxes[:, 2:4] - boxes[:, 0:2]
 
     # [13, 13, 3, 3+num_class]
-    y_true_13 = np.zeros((img_size[1] / 32, img_size[0] / 32, 3, 5 + class_num), np.float32)
-    y_true_26 = np.zeros((img_size[1] / 16, img_size[0] / 16, 3, 5 + class_num), np.float32)
-    y_true_52 = np.zeros((img_size[1] / 8, img_size[0] / 8, 3, 5 + class_num), np.float32)
+    y_true_13 = np.zeros((img_size[1] // 32, img_size[0] // 32, 3, 5 + class_num), np.float32)
+    y_true_26 = np.zeros((img_size[1] // 16, img_size[0] // 16, 3, 5 + class_num), np.float32)
+    y_true_52 = np.zeros((img_size[1] // 8, img_size[0] // 8, 3, 5 + class_num), np.float32)
 
     y_true = [y_true_13, y_true_26, y_true_52]
 
@@ -101,7 +103,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     ratio_dict = {1.: 8., 2.: 16., 3.: 32.}
     for i, idx in enumerate(best_match_idx):
         # idx: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 2
-        feature_map_group = 2 - idx / 3
+        feature_map_group = 2 - idx // 3
         # scale ratio: 0,1,2 ==> 8; 3,4,5 ==> 16; 6,7,8 ==> 32
         ratio = ratio_dict[np.ceil((idx + 1) / 3.)]
         x = int(np.floor(box_centers[i, 0] / ratio))
