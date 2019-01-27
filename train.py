@@ -183,6 +183,10 @@ pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
 gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num)
 ################
 
+if args.restore_part == ['None']:
+    args.restore_part = [None]
+if args.update_part == ['None']:
+    args.update_part = [None]
 saver_to_restore = tf.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_part))
 update_vars = tf.contrib.framework.get_variables_to_restore(include=args.update_part)
 
