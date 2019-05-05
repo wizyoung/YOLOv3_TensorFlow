@@ -3,74 +3,54 @@
 from __future__ import division, print_function
 
 import numpy as np
-import tensorflow as tf
 import cv2
+import sys
+from utils.data_aug import *
+import random
+
+PY_VERSION = sys.version_info[0]
+iter_cnt = 0
 
 
 def parse_line(line):
     '''
-    Given a line from the training/test txt file, return parsed
-    pic_path, boxes info, and label info.
+    Given a line from the training/test txt file, return parsed info.
     return:
+        line_idx: int64
         pic_path: string.
         boxes: shape [N, 4], N is the ground truth count, elements in the second
             dimension are [x_min, y_min, x_max, y_max]
+        labels: shape [N]. class index.
     '''
+    if 'str' not in str(type(line)):
+        line = line.decode()
     s = line.strip().split(' ')
-    pic_path = s[0]
-    s = s[1:]
+    line_idx = int(s[0])
+    pic_path = s[1]
+    s = s[2:]
     box_cnt = len(s) // 5
     boxes = []
     labels = []
     for i in range(box_cnt):
-        label, x_min, y_min, x_max, y_max = int(s[i*5]), float(s[i*5+1]), float(s[i*5+2]), float(s[i*5+3]), float(s[i*5+4])
+        label, x_min, y_min, x_max, y_max = int(s[i * 5]), float(s[i * 5 + 1]), float(s[i * 5 + 2]), float(
+            s[i * 5 + 3]), float(s[i * 5 + 4])
         boxes.append([x_min, y_min, x_max, y_max])
         labels.append(label)
     boxes = np.asarray(boxes, np.float32)
     labels = np.asarray(labels, np.int64)
-    return pic_path, boxes, labels
-
-
-def resize_image_and_correct_boxes(img, boxes, img_size):
-    # convert gray scale image to 3-channel fake RGB image
-    if len(img) == 2:
-        img = np.expand_dims(img, -1)
-    ori_height, ori_width = img.shape[:2]
-    new_width, new_height = img_size
-    # shape to (new_height, new_width)
-    img = cv2.resize(img, (new_width, new_height))
-
-    # convert to float
-    img = np.asarray(img, np.float32)
-
-    # boxes
-    # xmin, xmax
-    boxes[:, 0] = boxes[:, 0] / ori_width * new_width
-    boxes[:, 2] = boxes[:, 2] / ori_width * new_width
-    # ymin, ymax
-    boxes[:, 1] = boxes[:, 1] / ori_height * new_height
-    boxes[:, 3] = boxes[:, 3] / ori_height * new_height
-
-    return img, boxes
-
-
-def data_augmentation(img, boxes, label):
-    '''
-    Do your own data augmentation here.
-    param:
-        img: a [H, W, 3] shape RGB format image, float32 dtype
-        boxes: [N, 4] shape boxes coordinate info, N is the ground truth box number,
-            4 elements in the second dimension are [x_min, y_min, x_max, y_max], float32 dtype
-        label: [N] shape labels, int64 dtype (you should not convert to int32)
-    '''
-    return img, boxes, label
+    return line_idx, pic_path, boxes, labels
 
 
 def process_box(boxes, labels, img_size, class_num, anchors):
     '''
     Generate the y_true label, i.e. the ground truth feature_maps in 3 different scales.
+    params:
+        boxes: [N, 5] shape, float32 dtype. `x_min, y_min, x_max, y_mix, mixup_weight`.
+        labels: [N] shape, int64 dtype.
+        class_num: int64 num.
+        anchors: [9, 4] shape, float32 dtype.
     '''
-    anchors_mask = [[6,7,8], [3,4,5], [0,1,2]]
+    anchors_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 
     # convert boxes form:
     # shape: [N, 2]
@@ -79,10 +59,15 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     # (width, height)
     box_sizes = boxes[:, 2:4] - boxes[:, 0:2]
 
-    # [13, 13, 3, 3+num_class]
-    y_true_13 = np.zeros((img_size[1] // 32, img_size[0] // 32, 3, 5 + class_num), np.float32)
-    y_true_26 = np.zeros((img_size[1] // 16, img_size[0] // 16, 3, 5 + class_num), np.float32)
-    y_true_52 = np.zeros((img_size[1] // 8, img_size[0] // 8, 3, 5 + class_num), np.float32)
+    # [13, 13, 3, 5+num_class+1] `5` means coords and labels. `1` means mix up weight. 
+    y_true_13 = np.zeros((img_size[1] // 32, img_size[0] // 32, 3, 6 + class_num), np.float32)
+    y_true_26 = np.zeros((img_size[1] // 16, img_size[0] // 16, 3, 6 + class_num), np.float32)
+    y_true_52 = np.zeros((img_size[1] // 8, img_size[0] // 8, 3, 6 + class_num), np.float32)
+
+    # mix up weight default to 1.
+    y_true_13[..., -1] = 1.
+    y_true_26[..., -1] = 1.
+    y_true_52[..., -1] = 1.
 
     y_true = [y_true_13, y_true_26, y_true_52]
 
@@ -96,13 +81,15 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     whs = maxs - mins
 
     # [N, 9]
-    iou = (whs[:, :, 0] * whs[:, :, 1]) / (box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :, 1] + 1e-10)
+    iou = (whs[:, :, 0] * whs[:, :, 1]) / (
+                box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :,
+                                                                                                         1] + 1e-10)
     # [N]
     best_match_idx = np.argmax(iou, axis=1)
 
     ratio_dict = {1.: 8., 2.: 16., 3.: 32.}
     for i, idx in enumerate(best_match_idx):
-        # idx: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 2
+        # idx: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 0
         feature_map_group = 2 - idx // 3
         # scale ratio: 0,1,2 ==> 8; 3,4,5 ==> 16; 6,7,8 ==> 32
         ratio = ratio_dict[np.ceil((idx + 1) / 3.)]
@@ -110,12 +97,13 @@ def process_box(boxes, labels, img_size, class_num, anchors):
         y = int(np.floor(box_centers[i, 1] / ratio))
         k = anchors_mask[feature_map_group].index(idx)
         c = labels[i]
-        # print feature_map_group, '|', y,x,k,c
+        # print(feature_map_group, '|', y,x,k,c)
 
         y_true[feature_map_group][y, x, k, :2] = box_centers[i]
         y_true[feature_map_group][y, x, k, 2:4] = box_sizes[i]
         y_true[feature_map_group][y, x, k, 4] = 1.
-        y_true[feature_map_group][y, x, k, 5+c] = 1.
+        y_true[feature_map_group][y, x, k, 5 + c] = 1.
+        y_true[feature_map_group][y, x, k, -1] = boxes[i, -1]
 
     return y_true_13, y_true_26, y_true_52
 
@@ -124,23 +112,104 @@ def parse_data(line, class_num, img_size, anchors, mode):
     '''
     param:
         line: a line from the training/test txt file
-        args: args returned from the main program
+        class_num: totol class nums.
+        img_size: the size of image to be resized to. [width, height] format.
+        anchors: anchors.
         mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
     '''
-    pic_path, boxes, labels = parse_line(line)
+    if not isinstance(line, list):
+        img_idx, pic_path, boxes, labels = parse_line(line)
+        img = cv2.imread(pic_path)
+        # expand the 2nd dimension, mix up weight default to 1.
+        boxes = np.concatenate((boxes, np.full(shape=(boxes.shape[0], 1), fill_value=1., dtype=np.float32)), axis=-1)
+    else:
+        # the mix up case
+        _, pic_path1, boxes1, labels1 = parse_line(line[0])
+        img1 = cv2.imread(pic_path1)
+        img_idx, pic_path2, boxes2, labels2 = parse_line(line[1])
+        img2 = cv2.imread(pic_path2)
 
-    img = cv2.imread(pic_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img, boxes = mix_up(img1, img2, boxes1, boxes2)
+        labels = np.concatenate((labels1, labels2))
 
-    img, boxes = resize_image_and_correct_boxes(img, boxes, img_size)
-
-    # do data augmentation here
     if mode == 'train':
-        img, boxes, labels = data_augmentation(img, boxes, labels)
+        # random color jittering
+        # NOTE: applying color distort may lead to bad performance sometimes
+        # img = random_color_distort(img)
+
+        # random expansion with prob 0.5
+        if np.random.uniform(0, 1) > 0.5:
+            img, boxes = random_expand(img, boxes, 2)
+
+        # random cropping
+        h, w, _ = img.shape
+        boxes, crop = random_crop_with_constraints(boxes, (w, h))
+        x0, y0, w, h = crop
+        img = img[y0: y0+h, x0: x0+w]
+
+        # resize with random interpolation
+        h, w, _ = img.shape
+        interp = np.random.randint(0, 5)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp)
+
+        # random horizontal flip
+        h, w, _ = img.shape
+        img, boxes = random_flip(img, boxes, px=0.5)
+    else:
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1)
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
 
     # the input of yolo_v3 should be in range 0~1
     img = img / 255.
 
     y_true_13, y_true_26, y_true_52 = process_box(boxes, labels, img_size, class_num, anchors)
 
-    return img, y_true_13, y_true_26, y_true_52
+    return img_idx, img, y_true_13, y_true_26, y_true_52
+
+
+def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, interval=10):
+    '''
+    generate a batch of imgs and labels
+    param:
+        batch_line: a batch of lines from train/val.txt files
+        class_num: num of total classes.
+        img_size: the image size to be resized to. format: [width, height].
+        anchors: anchors. shape: [9, 2].
+        mode: 'train' or 'val'. if set to 'train', data augmentation will be applied.
+        multi_scale: whether to use multi_scale training, img_size varies from [320, 320] to [640, 640] by default. Note that it will take effect only when mode is set to 'train'.
+        interval: change the scale of image every interval batches. Note that it's indeterministic because of the multi threading.
+    '''
+    global iter_cnt
+    # multi_scale training
+    if multi_scale and mode == 'train':
+        random.seed(iter_cnt // interval)
+        random_img_size = [[x * 32, x * 32] for x in range(10, 20)]
+        img_size = random.sample(random_img_size, 1)[0]
+    iter_cnt += 1
+
+    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = [], [], [], [], []
+
+    # mix up strategy
+    if mix_up and mode == 'train':
+        mix_lines = []
+        batch_line = batch_line.tolist()
+        for idx, line in enumerate(batch_line):
+            if np.random.uniform(0, 1) < 0.5:
+                mix_lines.append([line, random.sample(batch_line[:idx] + batch_line[idx+1:], 1)[0]])
+            else:
+                mix_lines.append(line)
+        batch_line = line
+
+    for line in batch_line:
+        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode)
+
+        img_idx_batch.append(img_idx)
+        img_batch.append(img)
+        y_true_13_batch.append(y_true_13)
+        y_true_26_batch.append(y_true_26)
+        y_true_52_batch.append(y_true_52)
+
+    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = np.asarray(img_idx_batch), np.asarray(img_batch), np.asarray(y_true_13_batch), np.asarray(y_true_26_batch), np.asarray(y_true_52_batch)
+
+    return img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch

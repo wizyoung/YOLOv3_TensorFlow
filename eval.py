@@ -5,10 +5,11 @@ from __future__ import division, print_function
 import tensorflow as tf
 import numpy as np
 import argparse
+from tqdm import trange
 
-from utils.data_utils import parse_data
-from utils.misc_utils import parse_anchors, read_class_names, shuffle_and_overwrite, update_dict, make_summary, config_learning_rate, config_optimizer, list_add
-from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu
+from utils.data_utils import get_batch_data
+from utils.misc_utils import parse_anchors, read_class_names, AverageMeter
+from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
 from utils.nms_utils import gpu_nms
 
 from model import yolov3
@@ -21,27 +22,33 @@ parser = argparse.ArgumentParser(description="YOLO-V3 eval procedure.")
 parser.add_argument("--eval_file", type=str, default="./data/my_data/val.txt",
                     help="The path of the validation or test txt file.")
 
-parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/yolov3.ckpt",
+parser.add_argument("--restore_path", type=str, default="/home/user/Documents/chenyang_projects/yolo_v3_voc/YOLOv3_TensorFlow_old/No_data_aug_bn_0.9/best_model_Epoch_52_step_43200.0_mAP_0.6752_loss_20.220579_lr_0.0005882013",
                     help="The path of the weights to restore.")
 
 parser.add_argument("--anchor_path", type=str, default="./data/yolo_anchors.txt",
                     help="The path of the anchor txt file.")
 
-parser.add_argument("--class_name_path", type=str, default="./data/coco.names",
+parser.add_argument("--class_name_path", type=str, default="./data/my_data/voc.names",
                     help="The path of the class names.")
 
 # some numbers
-parser.add_argument("--batch_size", type=int, default=20,
-                    help="The batch size for training.")
-
 parser.add_argument("--img_size", nargs='*', type=int, default=[416, 416],
                     help="Resize the input image to `img_size`, size format: [width, height]")
 
 parser.add_argument("--num_threads", type=int, default=10,
                     help="Number of threads for image processing used in tf.data pipeline.")
 
-parser.add_argument("--prefetech_buffer", type=int, default=3,
+parser.add_argument("--prefetech_buffer", type=int, default=5,
                     help="Prefetech_buffer used in tf.data pipeline.")
+
+parser.add_argument("--nms_threshold", type=float, default=0.5,
+                    help="IOU threshold in nms operation.")
+
+parser.add_argument("--score_threshold", type=float, default=0.5,
+                    help="Threshold of the probability of the classes in nms operation.")
+
+parser.add_argument("--nms_topk", type=int, default=50,
+                    help="Keep at most nms_topk outputs after nms.")
 
 args = parser.parse_args()
 
@@ -50,29 +57,29 @@ args.anchors = parse_anchors(args.anchor_path)
 args.classes = read_class_names(args.class_name_path)
 args.class_num = len(args.classes)
 args.img_cnt = len(open(args.eval_file, 'r').readlines())
-args.batch_num = int(np.ceil(float(args.img_cnt) / args.batch_size))
 
 # setting placeholders
 is_training = tf.placeholder(dtype=tf.bool, name="phase_train")
 handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
+pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
+pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
+gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num, args.nms_topk, args.score_threshold, args.nms_threshold)
 
 ##################
 # tf.data pipeline
 ##################
+val_dataset = tf.data.TextLineDataset(args.eval_file)
+val_dataset = val_dataset.batch(1)
+val_dataset = val_dataset.map(
+    lambda x: tf.py_func(get_batch_data, [x, args.class_num, args.img_size, args.anchors, 'val'], [tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
+    num_parallel_calls=args.num_threads
+)
+val_dataset.prefetch(args.prefetech_buffer)
+iterator = val_dataset.make_one_shot_iterator()
 
-dataset = tf.data.TextLineDataset(args.eval_file)
-dataset = dataset.apply(tf.contrib.data.map_and_batch(
-    lambda x: tf.py_func(parse_data, [x, args.class_num, args.img_size, args.anchors, 'val'], [tf.float32, tf.float32, tf.float32, tf.float32]),
-    num_parallel_calls=args.num_threads, batch_size=args.batch_size))
-dataset = dataset.prefetch(args.prefetech_buffer)
-
-iterator = dataset.make_one_shot_iterator()
-
-# get an element from the dataset iterator
-image, y_true_13, y_true_26, y_true_52 = iterator.get_next()
+image_ids, image, y_true_13, y_true_26, y_true_52 = iterator.get_next()
+image_ids.set_shape([None])
 y_true = [y_true_13, y_true_26, y_true_52]
-
-# tf.data pipeline will lose the data shape, so we need to set it manually
 image.set_shape([None, args.img_size[1], args.img_size[0], 3])
 for y in y_true:
     y.set_shape([None, None, None, None, None])
@@ -80,20 +87,11 @@ for y in y_true:
 ##################
 # Model definition
 ##################
-
-# define yolo-v3 model here
 yolo_model = yolov3(args.class_num, args.anchors)
 with tf.variable_scope('yolov3'):
     pred_feature_maps = yolo_model.forward(image, is_training=is_training)
 loss = yolo_model.compute_loss(pred_feature_maps, y_true)
 y_pred = yolo_model.predict(pred_feature_maps)
-
-################
-# register the gpu nms operation here for the following evaluation scheme
-pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
-pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
-gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num)
-################
 
 saver_to_restore = tf.train.Saver()
 
@@ -103,25 +101,34 @@ with tf.Session() as sess:
 
     print('\n----------- start to eval -----------\n')
 
-    true_positive_dict, true_labels_dict, pred_labels_dict = {}, {}, {}
-    val_loss = [0., 0., 0., 0., 0.]
+    val_loss_total, val_loss_xy, val_loss_wh, val_loss_conf, val_loss_class = \
+        AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+    val_preds = []
 
-    for j in range(args.batch_num):
-        y_pred_, y_true_, loss_ = sess.run([y_pred, y_true, loss], feed_dict={is_training: False})
-        true_positive_dict_tmp, true_labels_dict_tmp, pred_labels_dict_tmp = \
-            evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag,
-                            y_pred_, y_true_, args.class_num, calc_now=False)
-        true_positive_dict = update_dict(true_positive_dict, true_positive_dict_tmp)
-        true_labels_dict = update_dict(true_labels_dict, true_labels_dict_tmp)
-        pred_labels_dict = update_dict(pred_labels_dict, pred_labels_dict_tmp)
+    for j in trange(args.img_cnt):
+        __image_ids, __y_pred, __loss = sess.run([image_ids, y_pred, loss], feed_dict={is_training: False})
+        pred_content = get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __image_ids, __y_pred)
 
-        val_loss = list_add(val_loss, loss_)
+        val_preds.extend(pred_content)
+        val_loss_total.update(__loss[0])
+        val_loss_xy.update(__loss[1])
+        val_loss_wh.update(__loss[2])
+        val_loss_conf.update(__loss[3])
+        val_loss_class.update(__loss[4])
 
-    # make sure there is at least ground truth an object in each image
-    # avoid divided by 0
-    recall = float(sum(true_positive_dict.values())) / (sum(true_labels_dict.values()) + 1e-6)
-    precision = float(sum(true_positive_dict.values())) / (sum(pred_labels_dict.values()) + 1e-6)
+    rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
+    gt_dict = parse_gt_rec(args.eval_file, args.img_size)
+    print('mAP eval:')
+    for ii in range(args.class_num):
+        npos, nd, rec, prec, ap = voc_eval(gt_dict, val_preds, ii, iou_thres=0.5, use_07_metric=False)
+        rec_total.update(rec, npos)
+        prec_total.update(prec, nd)
+        ap_total.update(ap, 1)
+        print('Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}'.format(ii, rec, prec, ap))
 
-    print("recall: {:.3f}, precision: {:.3f}".format(recall, precision))
+    mAP = ap_total.avg
+    print('final mAP: {:.4f}'.format(mAP))
+    print("recall: {:.3f}, precision: {:.3f}".format(rec_total.avg, prec_total.avg))
     print("total_loss: {:.3f}, loss_xy: {:.3f}, loss_wh: {:.3f}, loss_conf: {:.3f}, loss_class: {:.3f}".format(
-        val_loss[0] / args.img_cnt, val_loss[1] / args.img_cnt, val_loss[2] / args.img_cnt, val_loss[3] / args.img_cnt, val_loss[4] / args.img_cnt))
+        val_loss_total.avg, val_loss_xy.avg, val_loss_wh.avg, val_loss_conf.avg, val_loss_class.avg
+    ))

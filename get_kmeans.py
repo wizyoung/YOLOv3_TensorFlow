@@ -97,7 +97,7 @@ def parse_anno(annotation_path):
     result = []
     for line in anno:
         s = line.strip().split(' ')
-        s = s[1:]
+        s = s[2:]
         box_cnt = len(s) // 5
         for i in range(box_cnt):
             x_min, y_min, x_max, y_max = float(s[i*5+1]), float(s[i*5+2]), float(s[i*5+3]), float(s[i*5+4])

@@ -5,7 +5,7 @@ from __future__ import division, print_function
 import numpy as np
 import tensorflow as tf
 
-def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thresh=0.5):
+def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thresh=0.5):
     """
     Perform NMS on GPU using TensorFlow.
 
@@ -16,7 +16,7 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thre
         max_boxes: integer, maximum number of predicted boxes you'd like, default is 50
         score_thresh: if [ highest class probability score < score_threshold]
                         then get rid of the corresponding box
-        iou_thresh: real value, "intersection over union" threshold used for NMS filtering
+        nms_thresh: real value, "intersection over union" threshold used for NMS filtering
     """
 
     boxes_list, label_list, score_list = [], [], []
@@ -36,7 +36,7 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thre
         nms_indices = tf.image.non_max_suppression(boxes=filter_boxes,
                                                    scores=filter_score,
                                                    max_output_size=max_boxes,
-                                                   iou_threshold=iou_thresh, name='nms_indices')
+                                                   iou_threshold=nms_thresh, name='nms_indices')
         label_list.append(tf.ones_like(tf.gather(filter_score, nms_indices), 'int32')*i)
         boxes_list.append(tf.gather(filter_boxes, nms_indices))
         score_list.append(tf.gather(filter_score, nms_indices))
