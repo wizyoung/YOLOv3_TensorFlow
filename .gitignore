@@ -58,6 +58,7 @@ __pycache__/
 # folders
 *.vscode/*
 *.texpadtmp/*
+*.idea/*
 
 # darknet
 *.weights

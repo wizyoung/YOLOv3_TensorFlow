@@ -93,15 +93,3 @@ with tf.Session() as sess:
     vid.release()
     if args.save_video:
         videoWriter.release()
-
-
-
-
-
-
-
-
-
-
-
-
