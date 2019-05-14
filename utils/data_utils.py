@@ -210,6 +210,6 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
         y_true_26_batch.append(y_true_26)
         y_true_52_batch.append(y_true_52)
 
-    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = np.asarray(img_idx_batch), np.asarray(img_batch), np.asarray(y_true_13_batch), np.asarray(y_true_26_batch), np.asarray(y_true_52_batch)
+    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = np.asarray(img_idx_batch, np.int64), np.asarray(img_batch), np.asarray(y_true_13_batch), np.asarray(y_true_26_batch), np.asarray(y_true_52_batch)
 
     return img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch
