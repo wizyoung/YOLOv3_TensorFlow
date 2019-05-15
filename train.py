@@ -146,7 +146,7 @@ with tf.Session() as sess:
                 recall, precision = evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __y_pred, __y_true, args.class_num, args.eval_threshold)
 
                 info = "Epoch: {}, global_step: {} | loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f} | ".format(
-                        epoch, int(__global_step), loss_total.avg, loss_xy.avg, loss_wh.avg, loss_conf.avg, loss_class.avg)
+                        epoch, int(__global_step), loss_total.average, loss_xy.average, loss_wh.average, loss_conf.average, loss_class.average)
                 info += 'Last batch: rec: {:.3f}, prec: {:.3f} | lr: {:.5g}'.format(recall, precision, __lr)
                 print(info)
                 logging.info(info)
@@ -154,14 +154,21 @@ with tf.Session() as sess:
                 writer.add_summary(make_summary('evaluation/train_batch_recall', recall), global_step=__global_step)
                 writer.add_summary(make_summary('evaluation/train_batch_precision', precision), global_step=__global_step)
 
-                if np.isnan(loss_total.last_avg):
+                if np.isnan(loss_total.average):
                     print('****' * 10)
                     raise ArithmeticError(
                         'Gradient exploded! Please train again and you may need modify some parameters.')
 
+        tmp_total_loss = loss_total.average
+        loss_total.reset()
+        loss_xy.reset()
+        loss_wh.reset()
+        loss_conf.reset()
+        loss_class.reset()
+
         # NOTE: this is just demo. You can set the conditions when to save the weights.
         if epoch % args.save_epoch == 0 and epoch > 0:
-            if loss_total.last_avg <= 2.:
+            if tmp_total_loss <= 2.:
                 saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.last_avg, __lr))
 
         # switch to validation dataset for evaluation
