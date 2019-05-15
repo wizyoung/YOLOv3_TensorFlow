@@ -199,7 +199,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
                 mix_lines.append([line, random.sample(batch_line[:idx] + batch_line[idx+1:], 1)[0]])
             else:
                 mix_lines.append(line)
-        batch_line = line
+        batch_line = mix_lines
 
     for line in batch_line:
         img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode)
