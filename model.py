@@ -185,45 +185,62 @@ class yolov3(object):
 
         return boxes, confs, probs
     
-    def loss_layer(self, feature_map_i, y_true, anchors):
-        '''
+    def loss_layer(self,feature_map_i,y_true,anchors):
+        """
         calc loss function from a certain scale
-        input:
-            feature_map_i: feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
-            y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
-            anchors: shape [9, 2]
-        '''
-        
-        # size in [h, w] format! don't get messed up!
+        Args：
+        feature_map_i:feature map in different scales
+        y_true:the ground truth atfer transform,the shape is :
+        [batch_size,w,h,anchors_number,class_number+5] such as [N,13,13,3,25]
+        anchors:the anchors from file.
+        """
+
         grid_size = tf.shape(feature_map_i)[1:3]
-        # the downscale ratio in height and weight
-        ratio = tf.cast(self.img_size / grid_size, tf.float32)
-        # N: batch_size
-        N = tf.cast(tf.shape(feature_map_i)[0], tf.float32)
+        ratio = tf.cast(self.img_size / grid_size,tf.float32)
+        N = tf.cast(tf.shape(feature_map_i)[0],tf.float32)
+        if N == 0:
+            raise ValueError
 
         x_y_offset, pred_boxes, pred_conf_logits, pred_prob_logits = self.reorg_layer(feature_map_i, anchors)
 
         ###########
         # get mask
         ###########
-        # shape: take 416x416 input image and 13*13 feature_map for example:
+        # 例如13*13的feature map下，得到的mask的形状如下，取出真实标签有无物体的mask:
         # [N, 13, 13, 3, 1]
         object_mask = y_true[..., 4:5]
         # shape: [N, 13, 13, 3, 4] & [N, 13, 13, 3] ==> [V, 4]
+        # 这里得到[V,4]张量应该是错误的，但是怎么得到[N,V,4]的张量呢
         # V: num of true gt box
-        valid_true_boxes = tf.boolean_mask(y_true[..., 0:4], tf.cast(object_mask[..., 0], 'bool'))
+        #tf.cast()函数：对张量的每一个元素执行类型转换，这里将张量中的每一个元素（即Object mask值）转换为bool类型
+        #valid_true_boxes = tf.boolean_mask(y_true[..., 0:4], tf.cast(object_mask[..., 0], 'bool'))
 
-        # shape: [V, 2]
-        valid_true_box_xy = valid_true_boxes[:, 0:2]
-        valid_true_box_wh = valid_true_boxes[:, 2:4]
-        # shape: [N, 13, 13, 3, 2]
+        #[N,1,1,1,V,4]
+        def pick_out_gt_box(y_true):
+            y_true = y_true.copy()
+            batch_size = y_true.shape[0]
+            true_boxes_batch = np.zeros([batch_size,1,1,1,100,4],dtype=np.float32)
+            for i in range(batch_size):
+                y_true_per_image = y_true[i]
+                true_boxes_per_image = y_true_per_image[y_true_per_image[...,4] > 0][:,0:4]
+                if len(true_boxes_per_image) == 0:continue
+                true_boxes_batch[i][0][0][0][0:len(true_boxes_per_image)] = true_boxes_per_image
+            
+            return true_boxes_batch
+        true_boxes = tf.py_func(pick_out_gt_box, [y_true], [tf.float32] )[0]
+        #[N,1,1,1,V,2]
+        valid_true_box_xy = true_boxes[..., 0:2]
+        valid_true_box_wh = true_boxes[..., 2:4]
+        # shape: [N, 13, 13, 3, 1, 2]
         pred_box_xy = pred_boxes[..., 0:2]
         pred_box_wh = pred_boxes[..., 2:4]
+        pred_box_xy_iou = tf.expand_dims(pred_boxes[..., 0:2],axis=4)
+        pred_box_wh_iou = tf.expand_dims(pred_boxes[..., 2:4],axis=4)
 
         # calc iou
-        # shape: [N, 13, 13, 3, V]
-        iou = self.broadcast_iou(valid_true_box_xy, valid_true_box_wh, pred_box_xy, pred_box_wh)
-
+        # shape: [N, 13, 13, 3, 1]
+        iou = self.broadcast_iou(valid_true_box_xy, valid_true_box_wh, pred_box_xy_iou, pred_box_wh_iou)
+        #iou = tf.boolean_mask(iou,tf.cast(object_mask[..., 0], 'bool'))
         # shape: [N, 13, 13, 3]
         best_iou = tf.reduce_max(iou, axis=-1)
 
@@ -245,9 +262,9 @@ class yolov3(object):
         pred_tw_th = pred_box_wh / anchors
         # for numerical stability
         true_tw_th = tf.where(condition=tf.equal(true_tw_th, 0),
-                              x=tf.ones_like(true_tw_th), y=true_tw_th)
+                                x=tf.ones_like(true_tw_th), y=true_tw_th)
         pred_tw_th = tf.where(condition=tf.equal(pred_tw_th, 0),
-                              x=tf.ones_like(pred_tw_th), y=pred_tw_th)
+                                x=tf.ones_like(pred_tw_th), y=pred_tw_th)
         true_tw_th = tf.log(tf.clip_by_value(true_tw_th, 1e-9, 1e9))
         pred_tw_th = tf.log(tf.clip_by_value(pred_tw_th, 1e-9, 1e9))
 
@@ -259,36 +276,22 @@ class yolov3(object):
         ############
         # loss_part
         ############
-        # mix_up weight
-        # [N, 13, 13, 3, 1]
-        mix_w = y_true[..., -1:]
         # shape: [N, 13, 13, 3, 1]
-        xy_loss = tf.reduce_sum(tf.square(true_xy - pred_xy) * object_mask * box_loss_scale * mix_w) / N
-        wh_loss = tf.reduce_sum(tf.square(true_tw_th - pred_tw_th) * object_mask * box_loss_scale * mix_w) / N
+        # tf.reduce_sum,降维求和，如果没有第二参数的话，相当于所有元素求和
+        #注意这里是向量化操作，求得同一batch内的平均损失
+        xy_loss = tf.reduce_sum(tf.square(true_xy - pred_xy) * object_mask * box_loss_scale) / N
+        wh_loss = tf.reduce_sum(tf.square(true_tw_th - pred_tw_th) * object_mask * box_loss_scale) / N
 
         # shape: [N, 13, 13, 3, 1]
         conf_pos_mask = object_mask
         conf_neg_mask = (1 - object_mask) * ignore_mask
         conf_loss_pos = conf_pos_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
         conf_loss_neg = conf_neg_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
-        # TODO: may need to balance the pos-neg by multiplying some weights
-        conf_loss = conf_loss_pos + conf_loss_neg
-        if self.use_focal_loss:
-            alpha = 1.0
-            gamma = 2.0
-            # TODO: alpha should be a mask array if needed
-            focal_mask = alpha * tf.pow(tf.abs(object_mask - tf.sigmoid(pred_conf_logits)), gamma)
-            conf_loss *= focal_mask
-        conf_loss = tf.reduce_sum(conf_loss * mix_w) / N
+        conf_loss = tf.reduce_sum(conf_loss_pos + conf_loss_neg) / N
 
         # shape: [N, 13, 13, 3, 1]
-        # whether to use label smooth
-        if self.use_label_smooth:
-            delta = 0.01
-            label_target = (1 - delta) * y_true[..., 5:-1] + delta * 1. / self.class_num
-        else:
-            label_target = y_true[..., 5:-1]
-        class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=pred_prob_logits) * mix_w
+        # class_loss不再使用softmax，而是使用二元交叉熵损失，以便预测多个标签
+        class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true[..., 5:], logits=pred_prob_logits)
         class_loss = tf.reduce_sum(class_loss) / N
 
         return xy_loss, wh_loss, conf_loss, class_loss
@@ -314,38 +317,38 @@ class yolov3(object):
         return [total_loss, loss_xy, loss_wh, loss_conf, loss_class]
 
 
-    def broadcast_iou(self, true_box_xy, true_box_wh, pred_box_xy, pred_box_wh):
+     def broadcast_iou(self, true_box_xy, true_box_wh, pred_box_xy, pred_box_wh):
         '''
         maintain an efficient way to calculate the ios matrix between ground truth true boxes and the predicted boxes
         note: here we only care about the size match
         '''
         # shape:
-        # true_box_??: [V, 2]
-        # pred_box_??: [N, 13, 13, 3, 2]
+        # true_box_??: [N,1,1,1,V,2]
+        # pred_box_??: [N, 13, 13, 3, 1, 2]
 
         # shape: [N, 13, 13, 3, 1, 2]
-        pred_box_xy = tf.expand_dims(pred_box_xy, -2)
-        pred_box_wh = tf.expand_dims(pred_box_wh, -2)
+        #pred_box_xy = tf.expand_dims(pred_box_xy, -2)
+        #pred_box_wh = tf.expand_dims(pred_box_wh, -2)
 
         # shape: [1, V, 2]
-        true_box_xy = tf.expand_dims(true_box_xy, 0)
-        true_box_wh = tf.expand_dims(true_box_wh, 0)
+        #true_box_xy = tf.expand_dims(true_box_xy, 0)
+        #true_box_wh = tf.expand_dims(true_box_wh, 0)
 
-        # [N, 13, 13, 3, 1, 2] & [1, V, 2] ==> [N, 13, 13, 3, V, 2]
+        # [N, 13, 13, 3, V,2]
         intersect_mins = tf.maximum(pred_box_xy - pred_box_wh / 2.,
                                     true_box_xy - true_box_wh / 2.)
         intersect_maxs = tf.minimum(pred_box_xy + pred_box_wh / 2.,
                                     true_box_xy + true_box_wh / 2.)
         intersect_wh = tf.maximum(intersect_maxs - intersect_mins, 0.)
 
-        # shape: [N, 13, 13, 3, V]
+        # shape: [N, 13, 13, 3, 1]
         intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
         # shape: [N, 13, 13, 3, 1]
         pred_box_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
-        # shape: [1, V]
+        # shape: [N, 13, 13, 3, 1]
         true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
 
-        # [N, 13, 13, 3, V]
+        # [N, 13, 13, 3, 1]
         iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
 
         return iou
