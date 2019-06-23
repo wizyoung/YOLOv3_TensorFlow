@@ -61,8 +61,8 @@ warm_up_epoch = 3  # Warm up training epoches. Set to a larger value if gradient
 
 ### some constants in validation
 # nms
-nms_threshold = 0.5  # iou threshold in nms operation
-score_threshold = 0.01  # threshold of the probability of the classes in nms operation, i.e. score = pred_confs * pred_probs. set lower for higher recall.
+nms_threshold = 0.45  # iou threshold in nms operation
+score_threshold = 0.1  # threshold of the probability of the classes in nms operation, i.e. score = pred_confs * pred_probs. set lower for higher recall.
 nms_topk = 50  # keep at most nms_topk outputs after nms
 # mAP eval
 eval_threshold = 0.5  # the iou threshold applied in mAP evaluation

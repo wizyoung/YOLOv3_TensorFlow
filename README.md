@@ -86,7 +86,7 @@ For better understanding of the model architecture, you can refer to the followi
 
 (1) annotation file
 
-Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_index image_absolute_path box_1 box_2 ... box_n`. Box_x format: `label_index x_min y_min x_max y_max`. (The origin of coordinates is at the left top corner.) `image_index` is the line index which starts from zero. `label_index` is in range [0, class_num - 1].
+Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_index image_absolute_path box_1 box_2 ... box_n`. Box_x format: `label_index x_min y_min x_max y_max`. (The origin of coordinates is at the left top corner, left top => (xmin, ymin), right bottom => (xmax, ymax).) `image_index` is the line index which starts from zero. `label_index` is in range [0, class_num - 1].
 
 For example:
 
@@ -119,7 +119,7 @@ Using the kmeans algorithm to get the prior anchors:
 python get_kmeans.py
 ```
 
-Then you will get 9 anchors and the average IOU. Save the anchors to a txt file.
+Then you will get 9 anchors and the average IoU. Save the anchors to a txt file.
 
 The COCO dataset anchors offered by YOLO's author is placed at `./data/yolo_anchors.txt`, you can use that one too.
 
