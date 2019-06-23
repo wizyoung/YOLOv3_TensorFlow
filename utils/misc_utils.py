@@ -27,12 +27,6 @@ class AverageMeter(object):
         self.count += n
         self.average = self.sum / float(self.count)
 
-    @property
-    def avg(self):
-        self.last_avg = self.average
-        self.reset()
-        return self.last_avg
-
 
 def parse_anchors(anchor_path):
     '''

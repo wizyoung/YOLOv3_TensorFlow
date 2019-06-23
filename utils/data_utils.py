@@ -135,7 +135,7 @@ def parse_data(line, class_num, img_size, anchors, mode):
     if mode == 'train':
         # random color jittering
         # NOTE: applying color distort may lead to bad performance sometimes
-        # img = random_color_distort(img)
+        img = random_color_distort(img)
 
         # random expansion with prob 0.5
         if np.random.uniform(0, 1) > 0.5:

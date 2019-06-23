@@ -206,31 +206,35 @@ class yolov3(object):
         ###########
         # get mask
         ###########
+
         # shape: take 416x416 input image and 13*13 feature_map for example:
         # [N, 13, 13, 3, 1]
         object_mask = y_true[..., 4:5]
-        # shape: [N, 13, 13, 3, 4] & [N, 13, 13, 3] ==> [V, 4]
-        # V: num of true gt box
-        valid_true_boxes = tf.boolean_mask(y_true[..., 0:4], tf.cast(object_mask[..., 0], 'bool'))
 
-        # shape: [V, 2]
-        valid_true_box_xy = valid_true_boxes[:, 0:2]
-        valid_true_box_wh = valid_true_boxes[:, 2:4]
+        ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+        def loop_cond(idx, ignore_mask):
+            return tf.less(idx, tf.cast(N, tf.int32))
+        def loop_body(idx, ignore_mask):
+            # shape: [13, 13, 3, 4] & [13, 13, 3]  ==>  [V, 4]
+            # V: num of true gt box of each image in a batch
+            valid_true_boxes = tf.boolean_mask(y_true[idx, ..., 0:4], tf.cast(object_mask[idx, ..., 0], 'bool'))
+            # shape: [13, 13, 3, 4] & [V, 4] ==> [13, 13, 3, V]
+            iou = self.box_iou(pred_boxes[idx], valid_true_boxes)
+            # shape: [13, 13, 3]
+            best_iou = tf.reduce_max(iou, axis=-1)
+            # shape: [13, 13, 3]
+            ignore_mask_tmp = tf.cast(best_iou < 0.5, tf.float32)
+            # finally will be shape: [N, 13, 13, 3]
+            ignore_mask = ignore_mask.write(idx, ignore_mask_tmp)
+            return idx + 1, ignore_mask
+        _, ignore_mask = tf.while_loop(cond=loop_cond, body=loop_body, loop_vars=[0, ignore_mask])
+        ignore_mask = ignore_mask.stack()
+        # shape: [N, 13, 13, 3, 1]
+        ignore_mask = tf.expand_dims(ignore_mask, -1)
+
         # shape: [N, 13, 13, 3, 2]
         pred_box_xy = pred_boxes[..., 0:2]
         pred_box_wh = pred_boxes[..., 2:4]
-
-        # calc iou
-        # shape: [N, 13, 13, 3, V]
-        iou = self.broadcast_iou(valid_true_box_xy, valid_true_box_wh, pred_box_xy, pred_box_wh)
-
-        # shape: [N, 13, 13, 3]
-        best_iou = tf.reduce_max(iou, axis=-1)
-
-        # get_ignore_mask
-        ignore_mask = tf.cast(best_iou < 0.5, tf.float32)
-        # shape: [N, 13, 13, 3, 1]
-        ignore_mask = tf.expand_dims(ignore_mask, -1)
 
         # get xy coordinates in one cell from the feature_map
         # numerical range: 0 ~ 1
@@ -292,6 +296,47 @@ class yolov3(object):
         class_loss = tf.reduce_sum(class_loss) / N
 
         return xy_loss, wh_loss, conf_loss, class_loss
+    
+
+    def box_iou(self, pred_boxes, valid_true_boxes):
+        '''
+        param:
+            pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
+            valid_true: [V, 4]
+        '''
+
+        # [13, 13, 3, 2]
+        pred_box_xy = pred_boxes[..., 0:2]
+        pred_box_wh = pred_boxes[..., 2:4]
+
+        # shape: [13, 13, 3, 1, 2]
+        pred_box_xy = tf.expand_dims(pred_box_xy, -2)
+        pred_box_wh = tf.expand_dims(pred_box_wh, -2)
+
+        # [V, 2]
+        true_box_xy = valid_true_boxes[:, 0:2]
+        true_box_wh = valid_true_boxes[:, 2:4]
+
+        # [13, 13, 3, 1, 2] & [V, 2] ==> [13, 13, 3, V, 2]
+        intersect_mins = tf.maximum(pred_box_xy - pred_box_wh / 2.,
+                                    true_box_xy - true_box_wh / 2.)
+        intersect_maxs = tf.minimum(pred_box_xy + pred_box_wh / 2.,
+                                    true_box_xy + true_box_wh / 2.)
+        intersect_wh = tf.maximum(intersect_maxs - intersect_mins, 0.)
+
+        # shape: [13, 13, 3, V]
+        intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
+        # shape: [13, 13, 3, 1]
+        pred_box_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
+        # shape: [V]
+        true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
+        # shape: [1, V]
+        true_box_area = tf.expand_dims(true_box_area, axis=0)
+
+        # [13, 13, 3, V]
+        iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
+
+        return iou
 
     
     def compute_loss(self, y_pred, y_true):
@@ -312,40 +357,3 @@ class yolov3(object):
             loss_class += result[3]
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
         return [total_loss, loss_xy, loss_wh, loss_conf, loss_class]
-
-
-    def broadcast_iou(self, true_box_xy, true_box_wh, pred_box_xy, pred_box_wh):
-        '''
-        maintain an efficient way to calculate the ios matrix between ground truth true boxes and the predicted boxes
-        note: here we only care about the size match
-        '''
-        # shape:
-        # true_box_??: [V, 2]
-        # pred_box_??: [N, 13, 13, 3, 2]
-
-        # shape: [N, 13, 13, 3, 1, 2]
-        pred_box_xy = tf.expand_dims(pred_box_xy, -2)
-        pred_box_wh = tf.expand_dims(pred_box_wh, -2)
-
-        # shape: [1, V, 2]
-        true_box_xy = tf.expand_dims(true_box_xy, 0)
-        true_box_wh = tf.expand_dims(true_box_wh, 0)
-
-        # [N, 13, 13, 3, 1, 2] & [1, V, 2] ==> [N, 13, 13, 3, V, 2]
-        intersect_mins = tf.maximum(pred_box_xy - pred_box_wh / 2.,
-                                    true_box_xy - true_box_wh / 2.)
-        intersect_maxs = tf.minimum(pred_box_xy + pred_box_wh / 2.,
-                                    true_box_xy + true_box_wh / 2.)
-        intersect_wh = tf.maximum(intersect_maxs - intersect_mins, 0.)
-
-        # shape: [N, 13, 13, 3, V]
-        intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
-        # shape: [N, 13, 13, 3, 1]
-        pred_box_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
-        # shape: [1, V]
-        true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
-
-        # [N, 13, 13, 3, V]
-        iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
-
-        return iou

@@ -159,17 +159,10 @@ with tf.Session() as sess:
                     raise ArithmeticError(
                         'Gradient exploded! Please train again and you may need modify some parameters.')
 
-        tmp_total_loss = loss_total.average
-        loss_total.reset()
-        loss_xy.reset()
-        loss_wh.reset()
-        loss_conf.reset()
-        loss_class.reset()
-
         # NOTE: this is just demo. You can set the conditions when to save the weights.
         if epoch % args.save_epoch == 0 and epoch > 0:
-            if tmp_total_loss <= 2.:
-                saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.last_avg, __lr))
+            if loss_total.average <= 2.:
+                saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))
 
         # switch to validation dataset for evaluation
         if epoch % args.val_evaluation_epoch == 0 and epoch > 0:
@@ -204,24 +197,24 @@ with tf.Session() as sess:
                 prec_total.update(prec, nd)
                 ap_total.update(ap, 1)
 
-            mAP = ap_total.avg
-            info += 'EVAL: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'.format(rec_total.avg, prec_total.avg, mAP)
+            mAP = ap_total.average
+            info += 'EVAL: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'.format(rec_total.average, prec_total.average, mAP)
             info += 'EVAL: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'.format(
-                val_loss_total.avg, val_loss_xy.avg, val_loss_wh.avg, val_loss_conf.avg, val_loss_class.avg)
+                val_loss_total.average, val_loss_xy.average, val_loss_wh.average, val_loss_conf.average, val_loss_class.average)
             print(info)
             logging.info(info)
 
             if mAP > best_mAP:
                 best_mAP = mAP
                 saver_best.save(sess, args.save_dir + 'best_model_Epoch_{}_step_{}_mAP_{:.4f}_loss_{:.4f}_lr_{:.7g}'.format(
-                                   epoch, __global_step, best_mAP, val_loss_total.last_avg, __lr))
+                                   epoch, __global_step, best_mAP, val_loss_total.average, __lr))
 
             writer.add_summary(make_summary('evaluation/val_mAP', mAP), global_step=epoch)
-            writer.add_summary(make_summary('evaluation/val_recall', rec_total.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('evaluation/val_precision', prec_total.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('validation_statistics/total_loss', val_loss_total.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('validation_statistics/loss_xy', val_loss_xy.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('validation_statistics/loss_wh', val_loss_wh.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('validation_statistics/loss_conf', val_loss_conf.last_avg), global_step=epoch)
-            writer.add_summary(make_summary('validation_statistics/loss_class', val_loss_class.last_avg), global_step=epoch)
+            writer.add_summary(make_summary('evaluation/val_recall', rec_total.average), global_step=epoch)
+            writer.add_summary(make_summary('evaluation/val_precision', prec_total.average), global_step=epoch)
+            writer.add_summary(make_summary('validation_statistics/total_loss', val_loss_total.average), global_step=epoch)
+            writer.add_summary(make_summary('validation_statistics/loss_xy', val_loss_xy.average), global_step=epoch)
+            writer.add_summary(make_summary('validation_statistics/loss_wh', val_loss_wh.average), global_step=epoch)
+            writer.add_summary(make_summary('validation_statistics/loss_conf', val_loss_conf.average), global_step=epoch)
+            writer.add_summary(make_summary('validation_statistics/loss_class', val_loss_class.average), global_step=epoch)
 
