@@ -11,7 +11,7 @@ from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
 
 class yolov3(object):
 
-    def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4):
+    def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
 
         # self.anchors = [[10, 13], [16, 30], [33, 23],
                          # [30, 61], [62, 45], [59,  119],
@@ -22,6 +22,10 @@ class yolov3(object):
         self.use_label_smooth = use_label_smooth
         self.use_focal_loss = use_focal_loss
         self.weight_decay = weight_decay
+        # inference speed optimization
+        # if `use_static_shape` is True, use tensor.get_shape(), otherwise use tf.shape(tensor)
+        # static_shape is slightly faster
+        self.use_static_shape = use_static_shape
 
     def forward(self, inputs, is_training=False, reuse=False):
         # the input img_size, form: [height, weight]
@@ -54,7 +58,7 @@ class yolov3(object):
                     feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')
 
                     inter1 = conv2d(inter1, 256, 1)
-                    inter1 = upsample_layer(inter1, tf.shape(route_2))
+                    inter1 = upsample_layer(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
                     concat1 = tf.concat([inter1, route_2], axis=3)
 
                     inter2, net = yolo_block(concat1, 256)
@@ -64,7 +68,7 @@ class yolov3(object):
                     feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
 
                     inter2 = conv2d(inter2, 128, 1)
-                    inter2 = upsample_layer(inter2, tf.shape(route_1))
+                    inter2 = upsample_layer(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
                     concat2 = tf.concat([inter2, route_1], axis=3)
 
                     _, feature_map_3 = yolo_block(concat2, 128)
@@ -82,7 +86,7 @@ class yolov3(object):
         anchors: shape: [3, 2]
         '''
         # NOTE: size in [h, w] format! don't get messed up!
-        grid_size = tf.shape(feature_map)[1:3]  # [13, 13]
+        grid_size = feature_map.get_shape().as_list()[1:3] if self.use_static_shape else tf.shape(feature_map)[1:3]  # [13, 13]
         # the downscale ratio in height and weight
         ratio = tf.cast(self.img_size / grid_size, tf.float32)
         # rescale the anchors to the feature_map
@@ -147,7 +151,7 @@ class yolov3(object):
 
         def _reshape(result):
             x_y_offset, boxes, conf_logits, prob_logits = result
-            grid_size = tf.shape(x_y_offset)[:2]
+            grid_size = x_y_offset.get_shape().as_list()[:2] if self.use_static_shape else tf.shape(x_y_offset)[:2]
             boxes = tf.reshape(boxes, [-1, grid_size[0] * grid_size[1] * 3, 4])
             conf_logits = tf.reshape(conf_logits, [-1, grid_size[0] * grid_size[1] * 3, 1])
             prob_logits = tf.reshape(prob_logits, [-1, grid_size[0] * grid_size[1] * 3, self.class_num])

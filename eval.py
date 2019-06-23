@@ -44,7 +44,7 @@ parser.add_argument("--prefetech_buffer", type=int, default=5,
 parser.add_argument("--nms_threshold", type=float, default=0.5,
                     help="IOU threshold in nms operation.")
 
-parser.add_argument("--score_threshold", type=float, default=0.5,
+parser.add_argument("--score_threshold", type=float, default=0.01,
                     help="Threshold of the probability of the classes in nms operation.")
 
 parser.add_argument("--nms_topk", type=int, default=50,
