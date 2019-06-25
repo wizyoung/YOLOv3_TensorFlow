@@ -45,8 +45,15 @@ pw_values = [learning_rate_init, 3e-5, 1e-4]
 
 ### Load and finetune
 # Choose the parts you want to restore the weights. List form.
-# Set to None to restore the whole model.
-restore_part = ['yolov3/darknet53_body']
+# restore_include: None, restore_exclude: None  => restore the whole model
+# restore_include: None, restore_exclude: scope  => restore the whole model except `scope`
+# restore_include: scope1, restore_exclude: scope2  => if scope1 contains scope2, restore scope1 and not restore scope2 (scope1 - scope2)
+# choise 1: only restore the darknet body
+# restore_include = ['yolov3/darknet53_body']
+# restore_exclude = None
+# choise 2: restore all layers except the last 3 conv2d layers in 3 scale
+restore_include = None
+restore_exclude = ['yolov3/yolov3_head/Conv_14', 'yolov3/yolov3_head/Conv_6', 'yolov3/yolov3_head/Conv_22']
 # Choose the parts you want to finetune. List form.
 # Set to None to train the whole model.
 update_part = ['yolov3/yolov3_head']
@@ -63,7 +70,7 @@ warm_up_epoch = 3  # Warm up training epoches. Set to a larger value if gradient
 # nms
 nms_threshold = 0.45  # iou threshold in nms operation
 score_threshold = 0.1  # threshold of the probability of the classes in nms operation, i.e. score = pred_confs * pred_probs. set lower for higher recall.
-nms_topk = 50  # keep at most nms_topk outputs after nms
+nms_topk = 150  # keep at most nms_topk outputs after nms
 # mAP eval
 eval_threshold = 0.5  # the iou threshold applied in mAP evaluation
 

@@ -271,19 +271,40 @@ def random_color_distort(img, brightness_delta=32, hue_vari=18, sat_vari=0.5, va
     return img
 
 
-def resize_with_bbox(img, bbox, new_width, new_height, interp=0):
+def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False):
     '''
     Resize the image and correct the bbox accordingly.
     '''
     ori_height, ori_width = img.shape[:2]
-    img = cv2.resize(img, (new_width, new_height), interpolation=interp)
 
-    # xmin, xmax
-    bbox[:, [0, 2]] = bbox[:, [0, 2]] / ori_width * new_width
-    # ymin, ymax
-    bbox[:, [1, 3]] = bbox[:, [1, 3]] / ori_height * new_height
+    if letterbox:
+        resize_ratio = min(new_width / ori_width, new_height / ori_height)
+        resize_w = int(resize_ratio * ori_width)
+        resize_h = int(resize_ratio * ori_height)
+        img = cv2.resize(img, (resize_w, resize_h), interpolation=interp)
 
-    return img, bbox
+        image_padded = np.full((new_height, new_width, 3), 128, np.uint8)
+
+        dw = int((new_width - resize_w) / 2)
+        dh = int((new_height - resize_h) / 2)
+
+        image_paded[dh: resize_h + dh, dw: resize_w + dw, :] = img
+
+        # xmin, xmax
+        bbox[:, [0, 2]] = bbox[:, [0, 2]] * resize_ratio + dw
+        # ymin, ymax
+        bbox[:, [1, 3]] = bbox[:, [1, 3]] * resize_ratio + dh
+
+        return image_padded, bbox
+    else:
+        img = cv2.resize(img, (new_width, new_height), interpolation=interp)
+
+        # xmin, xmax
+        bbox[:, [0, 2]] = bbox[:, [0, 2]] / ori_width * new_width
+        # ymin, ymax
+        bbox[:, [1, 3]] = bbox[:, [1, 3]] / ori_height * new_height
+
+        return img, bbox
 
 
 def random_flip(img, bbox, px=0, py=0):

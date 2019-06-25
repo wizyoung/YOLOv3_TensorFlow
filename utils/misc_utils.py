@@ -137,7 +137,7 @@ def config_learning_rate(args, global_step):
             (1 + tf.cos(global_step / train_steps * np.pi))
     elif args.lr_type == 'cosine_decay_restart':
         return tf.train.cosine_decay_restarts(args.learning_rate_init, global_step, 
-                                              args.lr_decay_freq, tmul=2.0, m_mul=1.0, 
+                                              args.lr_decay_freq, t_mul=2.0, m_mul=1.0, 
                                               name='cosine_decay_learning_rate_restart')
     elif args.lr_type == 'fixed':
         return tf.convert_to_tensor(args.learning_rate_init, name='fixed_learning_rate')

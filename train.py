@@ -78,7 +78,7 @@ y_pred = yolo_model.predict(pred_feature_maps)
 l2_loss = tf.losses.get_regularization_loss()
 
 # setting restore parts and vars to update
-saver_to_restore = tf.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_part))
+saver_to_restore = tf.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_include, exclude=args.restore_exclude))
 update_vars = tf.contrib.framework.get_variables_to_restore(include=args.update_part)
 
 tf.summary.scalar('train_batch_statistics/total_loss', loss[0])

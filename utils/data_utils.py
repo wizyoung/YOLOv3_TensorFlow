@@ -139,7 +139,7 @@ def parse_data(line, class_num, img_size, anchors, mode):
 
         # random expansion with prob 0.5
         if np.random.uniform(0, 1) > 0.5:
-            img, boxes = random_expand(img, boxes, 2)
+            img, boxes = random_expand(img, boxes, 4)
 
         # random cropping
         h, w, _ = img.shape
@@ -150,13 +150,13 @@ def parse_data(line, class_num, img_size, anchors, mode):
         # resize with random interpolation
         h, w, _ = img.shape
         interp = np.random.randint(0, 5)
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox=True)
 
         # random horizontal flip
         h, w, _ = img.shape
         img, boxes = random_flip(img, boxes, px=0.5)
     else:
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox=True)
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
 
