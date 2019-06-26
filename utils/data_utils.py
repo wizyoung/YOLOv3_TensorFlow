@@ -25,9 +25,11 @@ def parse_line(line):
     if 'str' not in str(type(line)):
         line = line.decode()
     s = line.strip().split(' ')
+    assert len(s) > 6, 'Annotation error! Please check your annotation file. Make sure there is at least one target object in each image.'
     line_idx = int(s[0])
     pic_path = s[1]
     s = s[2:]
+    assert len(s) % 5 == 0, 'Annotation error! Please check your annotation file. Maybe partially missing some coordinates?'
     box_cnt = len(s) // 5
     boxes = []
     labels = []
