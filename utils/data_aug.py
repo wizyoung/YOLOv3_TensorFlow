@@ -288,7 +288,7 @@ def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False
         dw = int((new_width - resize_w) / 2)
         dh = int((new_height - resize_h) / 2)
 
-        image_paded[dh: resize_h + dh, dw: resize_w + dw, :] = img
+        image_padded[dh: resize_h + dh, dw: resize_w + dw, :] = img
 
         # xmin, xmax
         bbox[:, [0, 2]] = bbox[:, [0, 2]] * resize_ratio + dw
