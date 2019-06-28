@@ -158,6 +158,8 @@ Check the `eval.py` for more details. You should set the parameters yourself.
 
 You will get the loss, recall, precision, average precision and mAP metrics results.
 
+For higher mAP, you should set score_threshold to a small number.
+
 ### 9. Some tricks
 
 Here are some training tricks in my experiment:
@@ -167,6 +169,8 @@ Here are some training tricks in my experiment:
 First stage: Restore `darknet53_body` part weights from COCO checkpoints, train the `yolov3_head` with big learning rate like 1e-3 until the loss reaches to a low level.
 
 Second stage: Restore the weights from the first stage, then train the whole model with small learning rate like 1e-4 or smaller. At this stage remember to restore the optimizer parameters if you use optimizers like adam.
+
+Or just restore the whole weight file except the last three convolution layers.
 
 (2) Quick train:
 
@@ -184,11 +188,13 @@ These are all good strategies but it does **not** mean they will definitely impr
 
 This [paper](https://arxiv.org/abs/1902.04103) from gluon-cv has proved that data augmentation is critical to YOLO v3, which is completely in consistent with my own experiments. Some data augmentation strategies that seems reasonable may lead to poor performance. For example, after introducing random color jittering, the mAP on my own dataset drops heavily. Thus I hope  you pay extra attention to the data augmentation.
 
-(4) Loss nan? Setting a bigger warm_up_epoch number and try several more times.
+(4) Loss nan? Setting a bigger warm_up_epoch number or less learning rate and try several more times. If you fine-tune the whole model, using adam may cause nan value sometimes. You can try choosing momentum optimizer.
 
 ### 10. TODO
 
-[ ] Multi-GPU with sync batch norm. 
+[ ] Multi-GPUs with sync batch norm. 
+
+[ ] Maybe tf 2.0 ?
 
 -------
 

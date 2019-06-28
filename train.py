@@ -104,14 +104,15 @@ if not args.save_optimizer:
 
 optimizer = config_optimizer(args.optimizer_name, learning_rate)
 
-if args.save_optimizer:
-    saver_to_save = tf.train.Saver()
-    saver_best = tf.train.Saver()
-
 # set dependencies for BN ops
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
     train_op = optimizer.minimize(loss[0] + l2_loss, var_list=update_vars, global_step=global_step)
+
+if args.save_optimizer:
+    print('Saving optimizer parameters to checkpoint! Remember to restore the global_step in the fine-tuning afterwards.')
+    saver_to_save = tf.train.Saver()
+    saver_best = tf.train.Saver()
 
 with tf.Session() as sess:
     sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])

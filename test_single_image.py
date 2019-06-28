@@ -72,7 +72,7 @@ with tf.Session() as sess:
 
     for i in range(len(boxes_)):
         x0, y0, x1, y1 = boxes_[i]
-        plot_one_box(img_ori, [x0, y0, x1, y1], label=args.classes[labels_[i]], color=color_table[labels_[i]])
+        plot_one_box(img_ori, [x0, y0, x1, y1], label=args.classes[labels_[i]] + ', {:.2f}%'.format(scores_[i] * 100), color=color_table[labels_[i]])
     cv2.imshow('Detection result', img_ori)
     cv2.imwrite('detection_result.jpg', img_ori)
     cv2.waitKey(0)

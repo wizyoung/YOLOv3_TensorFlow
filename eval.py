@@ -41,13 +41,13 @@ parser.add_argument("--num_threads", type=int, default=10,
 parser.add_argument("--prefetech_buffer", type=int, default=5,
                     help="Prefetech_buffer used in tf.data pipeline.")
 
-parser.add_argument("--nms_threshold", type=float, default=0.5,
+parser.add_argument("--nms_threshold", type=float, default=0.45,
                     help="IOU threshold in nms operation.")
 
 parser.add_argument("--score_threshold", type=float, default=0.01,
                     help="Threshold of the probability of the classes in nms operation.")
 
-parser.add_argument("--nms_topk", type=int, default=50,
+parser.add_argument("--nms_topk", type=int, default=400,
                     help="Keep at most nms_topk outputs after nms.")
 
 args = parser.parse_args()
@@ -126,9 +126,9 @@ with tf.Session() as sess:
         ap_total.update(ap, 1)
         print('Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}'.format(ii, rec, prec, ap))
 
-    mAP = ap_total.avg
+    mAP = ap_total.average
     print('final mAP: {:.4f}'.format(mAP))
-    print("recall: {:.3f}, precision: {:.3f}".format(rec_total.avg, prec_total.avg))
+    print("recall: {:.3f}, precision: {:.3f}".format(rec_total.average, prec_total.average))
     print("total_loss: {:.3f}, loss_xy: {:.3f}, loss_wh: {:.3f}, loss_conf: {:.3f}, loss_class: {:.3f}".format(
-        val_loss_total.avg, val_loss_xy.avg, val_loss_wh.avg, val_loss_conf.avg, val_loss_class.avg
+        val_loss_total.average, val_loss_xy.average, val_loss_wh.average, val_loss_conf.average, val_loss_class.average
     ))
