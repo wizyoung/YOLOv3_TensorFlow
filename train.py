@@ -111,7 +111,7 @@ with tf.control_dependencies(update_ops):
     # apple gradient clip to avoid gradient exploding
     gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)
     clip_grad_var = [gv if gv[0] is None else [
-          tf.clip_by_norm(gv[0], 50.), gv[1]] for gv in gvs]
+          tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
 if args.save_optimizer:
