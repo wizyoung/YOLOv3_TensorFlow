@@ -91,8 +91,8 @@ Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. O
 For example:
 
 ```
-0 xxx/xxx/a.jpg 300 400 0 453 369 473 391 1 588 245 608 268
-1 xxx/xxx/b.jpg 300 400 1 466 403 485 422 2 793 300 809 320
+0 xxx/xxx/a.jpg 1920 1080 0 453 369 473 391 1 588 245 608 268
+1 xxx/xxx/b.jpg 1920 1080 1 466 403 485 422 2 793 300 809 320
 ...
 ```
 
