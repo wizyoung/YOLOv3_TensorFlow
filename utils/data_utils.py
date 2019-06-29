@@ -15,20 +15,25 @@ iter_cnt = 0
 def parse_line(line):
     '''
     Given a line from the training/test txt file, return parsed info.
+    line format: line_index, img_path, img_width, img_height, [box_info_1 (5 number)], ...
     return:
         line_idx: int64
         pic_path: string.
         boxes: shape [N, 4], N is the ground truth count, elements in the second
             dimension are [x_min, y_min, x_max, y_max]
         labels: shape [N]. class index.
+        img_width: int.
+        img_height: int
     '''
     if 'str' not in str(type(line)):
         line = line.decode()
     s = line.strip().split(' ')
-    assert len(s) > 6, 'Annotation error! Please check your annotation file. Make sure there is at least one target object in each image.'
+    assert len(s) > 8, 'Annotation error! Please check your annotation file. Make sure there is at least one target object in each image.'
     line_idx = int(s[0])
     pic_path = s[1]
-    s = s[2:]
+    img_width = int(s[2])
+    img_height = int(s[3])
+    s = s[4:]
     assert len(s) % 5 == 0, 'Annotation error! Please check your annotation file. Maybe partially missing some coordinates?'
     box_cnt = len(s) // 5
     boxes = []
@@ -40,7 +45,7 @@ def parse_line(line):
         labels.append(label)
     boxes = np.asarray(boxes, np.float32)
     labels = np.asarray(labels, np.int64)
-    return line_idx, pic_path, boxes, labels
+    return line_idx, pic_path, boxes, labels, img_width, img_height
 
 
 def process_box(boxes, labels, img_size, class_num, anchors):
@@ -110,7 +115,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     return y_true_13, y_true_26, y_true_52
 
 
-def parse_data(line, class_num, img_size, anchors, mode):
+def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
     '''
     param:
         line: a line from the training/test txt file
@@ -118,17 +123,18 @@ def parse_data(line, class_num, img_size, anchors, mode):
         img_size: the size of image to be resized to. [width, height] format.
         anchors: anchors.
         mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
+        letterbox_resize: whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
     '''
     if not isinstance(line, list):
-        img_idx, pic_path, boxes, labels = parse_line(line)
+        img_idx, pic_path, boxes, labels, _, _ = parse_line(line)
         img = cv2.imread(pic_path)
         # expand the 2nd dimension, mix up weight default to 1.
         boxes = np.concatenate((boxes, np.full(shape=(boxes.shape[0], 1), fill_value=1., dtype=np.float32)), axis=-1)
     else:
         # the mix up case
-        _, pic_path1, boxes1, labels1 = parse_line(line[0])
+        _, pic_path1, boxes1, labels1, _, _ = parse_line(line[0])
         img1 = cv2.imread(pic_path1)
-        img_idx, pic_path2, boxes2, labels2 = parse_line(line[1])
+        img_idx, pic_path2, boxes2, labels2, _, _ = parse_line(line[1])
         img2 = cv2.imread(pic_path2)
 
         img, boxes = mix_up(img1, img2, boxes1, boxes2)
@@ -152,13 +158,13 @@ def parse_data(line, class_num, img_size, anchors, mode):
         # resize with random interpolation
         h, w, _ = img.shape
         interp = np.random.randint(0, 5)
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox=True)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox=letterbox_resize)
 
         # random horizontal flip
         h, w, _ = img.shape
         img, boxes = random_flip(img, boxes, px=0.5)
     else:
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox=True)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox=letterbox_resize)
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
 
@@ -170,7 +176,7 @@ def parse_data(line, class_num, img_size, anchors, mode):
     return img_idx, img, y_true_13, y_true_26, y_true_52
 
 
-def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, interval=10):
+def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, letterbox_resize=True, interval=10):
     '''
     generate a batch of imgs and labels
     param:
@@ -180,6 +186,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
         anchors: anchors. shape: [9, 2].
         mode: 'train' or 'val'. if set to 'train', data augmentation will be applied.
         multi_scale: whether to use multi_scale training, img_size varies from [320, 320] to [640, 640] by default. Note that it will take effect only when mode is set to 'train'.
+        letterbox_resize: whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
         interval: change the scale of image every interval batches. Note that it's indeterministic because of the multi threading.
     '''
     global iter_cnt
@@ -204,7 +211,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
         batch_line = mix_lines
 
     for line in batch_line:
-        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode)
+        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode, letterbox_resize)
 
         img_idx_batch.append(img_idx)
         img_batch.append(img)

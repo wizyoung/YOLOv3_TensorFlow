@@ -11,6 +11,7 @@ import time
 from utils.misc_utils import parse_anchors, read_class_names
 from utils.nms_utils import gpu_nms
 from utils.plot_utils import get_color_table, plot_one_box
+from utils.data_aug import letterbox_resize
 
 from model import yolov3
 
@@ -21,6 +22,8 @@ parser.add_argument("--anchor_path", type=str, default="./data/yolo_anchors.txt"
                     help="The path of the anchor txt file.")
 parser.add_argument("--new_size", nargs='*', type=int, default=[416, 416],
                     help="Resize the input image with `new_size`, size format: [width, height]")
+parser.add_argument("--letterbox_resize", type=lambda x: (str(x).lower() == 'true'), default=False,
+                    help="Whether to use the letterbox resize.")
 parser.add_argument("--class_name_path", type=str, default="./data/coco.names",
                     help="The path of the class names.")
 parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/yolov3.ckpt",
@@ -62,8 +65,12 @@ with tf.Session() as sess:
     for i in range(video_frame_cnt):
         ret, img_ori = vid.read()
 
-        height_ori, width_ori = img_ori.shape[:2]
-        img = cv2.resize(img_ori, tuple(args.new_size))
+        img_ori = cv2.imread(args.input_image)
+        if args.letterbox_resize:
+            img, resize_ratio, dw, dh = letterbox_resize(img_ori, args.new_size[0], args.new_size[1])
+        else:
+            height_ori, width_ori = img_ori.shape[:2]
+            img = cv2.resize(img_ori, tuple(args.new_size))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = np.asarray(img, np.float32)
         img = img[np.newaxis, :] / 255.
@@ -73,10 +80,12 @@ with tf.Session() as sess:
         end_time = time.time()
 
         # rescale the coordinates to the original image
-        boxes_[:, 0] *= (width_ori/float(args.new_size[0]))
-        boxes_[:, 2] *= (width_ori/float(args.new_size[0]))
-        boxes_[:, 1] *= (height_ori/float(args.new_size[1]))
-        boxes_[:, 3] *= (height_ori/float(args.new_size[1]))
+        if args.letterbox_resize:
+            boxes_[:, [0, 2]] = (boxes_[:, [0, 2]] - dw) / resize_ratio
+            boxes_[:, [1, 3]] = (boxes_[:, [1, 3]] - dh) / resize_ratio
+        else:
+            boxes_[:, [0, 2]] *= (width_ori/float(args.new_size[0]))
+            boxes_[:, [1, 3]] *= (height_ori/float(args.new_size[1]))
 
 
         for i in range(len(boxes_)):

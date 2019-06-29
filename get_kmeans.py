@@ -23,7 +23,8 @@ def iou(box, clusters):
     box_area = box[0] * box[1]
     cluster_area = clusters[:, 0] * clusters[:, 1]
 
-    iou_ = intersection / (box_area + cluster_area - intersection + 1e-10)
+    iou_ = np.true_divide(intersection, box_area + cluster_area - intersection + 1e-10)
+    # iou_ = intersection / (box_area + cluster_area - intersection + 1e-10)
 
     return iou_
 
@@ -92,12 +93,14 @@ def kmeans(boxes, k, dist=np.median):
     return clusters
 
 
-def parse_anno(annotation_path):
+def parse_anno(annotation_path, target_size=None):
     anno = open(annotation_path, 'r')
     result = []
     for line in anno:
         s = line.strip().split(' ')
-        s = s[2:]
+        img_w = int(s[2])
+        img_h = int(s[3])
+        s = s[4:]
         box_cnt = len(s) // 5
         for i in range(box_cnt):
             x_min, y_min, x_max, y_max = float(s[i*5+1]), float(s[i*5+2]), float(s[i*5+3]), float(s[i*5+4])
@@ -105,7 +108,16 @@ def parse_anno(annotation_path):
             height = y_max - y_min
             assert width > 0
             assert height > 0
-            result.append([width, height])
+            # use letterbox resize, i.e. keep the original aspect ratio
+            # get k-means anchors on the resized target image size
+            if target_size is not None:
+                resize_ratio = min(target_size[0] / img_w, target_size[1] / img_h)
+                width *= resize_ratio
+                height *= resize_ratio
+                result.append([width, height])
+            # get k-means anchors on the original image size
+            else:
+                result.append([width, height])
     result = np.asarray(result)
     return result
 
@@ -123,8 +135,12 @@ def get_kmeans(anno, cluster_num=9):
 
 
 if __name__ == '__main__':
-    annotation_path = "./data/my_data/train.txt"
-    anno_result = parse_anno(annotation_path)
+    # target resize format: [width, height]
+    # if target_resize is speficied, the anchors are on the resized image scale
+    # if target_resize is set to None, the anchors are on the original image scale
+    target_size = [416, 416]
+    annotation_path = "train.txt"
+    anno_result = parse_anno(annotation_path, target_size=target_size)
     anchors, ave_iou = get_kmeans(anno_result, 9)
 
     anchor_string = ''

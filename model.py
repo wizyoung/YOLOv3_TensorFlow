@@ -215,6 +215,8 @@ class yolov3(object):
         # [N, 13, 13, 3, 1]
         object_mask = y_true[..., 4:5]
 
+        # the calculation of ignore mask if referred from
+        # https://github.com/pjreddie/darknet/blob/master/src/yolo_layer.c#L179
         ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
         def loop_cond(idx, ignore_mask):
             return tf.less(idx, tf.cast(N, tf.int32))

@@ -271,24 +271,35 @@ def random_color_distort(img, brightness_delta=32, hue_vari=18, sat_vari=0.5, va
     return img
 
 
+def letterbox_resize(img, new_width, new_height, interp=0):
+    '''
+    Letterbox resize. keep the original aspect ratio in the resized image.
+    '''
+    ori_height, ori_width = img.shape[:2]
+
+    resize_ratio = min(new_width / ori_width, new_height / ori_height)
+
+    resize_w = int(resize_ratio * ori_width)
+    resize_h = int(resize_ratio * ori_height)
+
+    img = cv2.resize(img, (resize_w, resize_h), interpolation=interp)
+    image_padded = np.full((new_height, new_width, 3), 128, np.uint8)
+
+    dw = int((new_width - resize_w) / 2)
+    dh = int((new_height - resize_h) / 2)
+
+    image_padded[dh: resize_h + dh, dw: resize_w + dw, :] = img
+
+    return image_padded, resize_ratio, dw, dh
+
+
 def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False):
     '''
     Resize the image and correct the bbox accordingly.
     '''
-    ori_height, ori_width = img.shape[:2]
 
     if letterbox:
-        resize_ratio = min(new_width / ori_width, new_height / ori_height)
-        resize_w = int(resize_ratio * ori_width)
-        resize_h = int(resize_ratio * ori_height)
-        img = cv2.resize(img, (resize_w, resize_h), interpolation=interp)
-
-        image_padded = np.full((new_height, new_width, 3), 128, np.uint8)
-
-        dw = int((new_width - resize_w) / 2)
-        dh = int((new_height - resize_h) / 2)
-
-        image_padded[dh: resize_h + dh, dw: resize_w + dw, :] = img
+        image_padded, resize_ratio, dw, dh = letterbox_resize(img, new_width, new_height, interp)
 
         # xmin, xmax
         bbox[:, [0, 2]] = bbox[:, [0, 2]] * resize_ratio + dw
@@ -297,6 +308,8 @@ def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False
 
         return image_padded, bbox
     else:
+        ori_height, ori_width = img.shape[:2]
+
         img = cv2.resize(img, (new_width, new_height), interpolation=interp)
 
         # xmin, xmax
@@ -365,10 +378,3 @@ def random_expand(img, bbox, max_ratio=4, fill=0, keep_ratio=True):
     bbox[:, 2:4] += (off_x, off_y)
 
     return dst, bbox
-
-
-
-
-
-
-

@@ -86,13 +86,13 @@ For better understanding of the model architecture, you can refer to the followi
 
 (1) annotation file
 
-Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_index image_absolute_path box_1 box_2 ... box_n`. Box_x format: `label_index x_min y_min x_max y_max`. (The origin of coordinates is at the left top corner, left top => (xmin, ymin), right bottom => (xmax, ymax).) `image_index` is the line index which starts from zero. `label_index` is in range [0, class_num - 1].
+Generate `train.txt/val.txt/test.txt` files under `./data/my_data/` directory. One line for one image, in the format like `image_index image_absolute_path img_width img_height box_1 box_2 ... box_n`. Box_x format: `label_index x_min y_min x_max y_max`. (The origin of coordinates is at the left top corner, left top => (xmin, ymin), right bottom => (xmax, ymax).) `image_index` is the line index which starts from zero. `label_index` is in range [0, class_num - 1].
 
 For example:
 
 ```
-0 xxx/xxx/a.jpg 0 453 369 473 391 1 588 245 608 268
-1 xxx/xxx/b.jpg 1 466 403 485 422 2 793 300 809 320
+0 xxx/xxx/a.jpg 300 400 0 453 369 473 391 1 588 245 608 268
+1 xxx/xxx/b.jpg 300 400 1 466 403 485 422 2 793 300 809 320
 ...
 ```
 
@@ -123,7 +123,7 @@ Then you will get 9 anchors and the average IoU. Save the anchors to a txt file.
 
 The COCO dataset anchors offered by YOLO's author is placed at `./data/yolo_anchors.txt`, you can use that one too.
 
-**NOTE: The yolo anchors computed by the kmeans script is on the original image scale. You may need to resize the anchors to your target training image size before training and write them to the anchors txt file. Then you should not modify the anchors later.**
+The yolo anchors computed by the kmeans script is on the resized image scale.  The default resize method is the letterbox resize, i.e., keep the original aspect ratio in the resized image.
 
 #### 7.2 Training
 
@@ -164,19 +164,19 @@ For higher mAP, you should set score_threshold to a small number.
 
 Here are some training tricks in my experiment:
 
-(1) Apply the two-stage training strategy:
+(1) Apply the two-stage training strategy or the one-stage training strategy:
+
+Two-stage training:
 
 First stage: Restore `darknet53_body` part weights from COCO checkpoints, train the `yolov3_head` with big learning rate like 1e-3 until the loss reaches to a low level.
 
 Second stage: Restore the weights from the first stage, then train the whole model with small learning rate like 1e-4 or smaller. At this stage remember to restore the optimizer parameters if you use optimizers like adam.
 
-Or just restore the whole weight file except the last three convolution layers.
+One-stage training:
 
-(2) Quick train:
+Just restore the whole weight file except the last three convolution layers (Conv_6, Conv_14, Conv_22). In this condition, be careful about the possible nan loss value.
 
-If you want to obtain acceptable results in a short time like in 10 minutes. You can use the coco names but substitute several with real class names in your dataset. In this way you restore the whole pretrained COCO model and get a 80 class classification model, but you only care about the class names from your dataset.
-
-(3) I've included many useful training strategies in `args.py`:
+(2) I've included many useful training strategies in `args.py`:
 
 - Cosine decay of lr (SGDR)
 - Multi-scale training
@@ -188,7 +188,7 @@ These are all good strategies but it does **not** mean they will definitely impr
 
 This [paper](https://arxiv.org/abs/1902.04103) from gluon-cv has proved that data augmentation is critical to YOLO v3, which is completely in consistent with my own experiments. Some data augmentation strategies that seems reasonable may lead to poor performance. For example, after introducing random color jittering, the mAP on my own dataset drops heavily. Thus I hope  you pay extra attention to the data augmentation.
 
-(4) Loss nan? Setting a bigger warm_up_epoch number or less learning rate and try several more times. If you fine-tune the whole model, using adam may cause nan value sometimes. You can try choosing momentum optimizer.
+(4) Loss nan? Setting a bigger warm_up_epoch number or smaller learning rate and try several more times. If you fine-tune the whole model, using adam may cause nan value sometimes. You can try choosing momentum optimizer.
 
 ### 10. TODO
 

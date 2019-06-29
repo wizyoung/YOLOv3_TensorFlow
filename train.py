@@ -36,7 +36,7 @@ train_dataset = train_dataset.shuffle(args.train_img_cnt)
 train_dataset = train_dataset.batch(args.batch_size)
 train_dataset = train_dataset.map(
     lambda x: tf.py_func(get_batch_data,
-                         inp=[x, args.class_num, args.img_size, args.anchors, 'train', args.multi_scale_train, args.use_mix_up],
+                         inp=[x, args.class_num, args.img_size, args.anchors, 'train', args.multi_scale_train, args.use_mix_up, args.letterbox_resize],
                          Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
     num_parallel_calls=args.num_threads
 )
@@ -46,7 +46,7 @@ val_dataset = tf.data.TextLineDataset(args.val_file)
 val_dataset = val_dataset.batch(1)
 val_dataset = val_dataset.map(
     lambda x: tf.py_func(get_batch_data,
-                         inp=[x, args.class_num, args.img_size, args.anchors, 'val', False, False],
+                         inp=[x, args.class_num, args.img_size, args.anchors, 'val', False, False, args.letterbox_resize],
                          Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
     num_parallel_calls=args.num_threads
 )
@@ -107,7 +107,12 @@ optimizer = config_optimizer(args.optimizer_name, learning_rate)
 # set dependencies for BN ops
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = optimizer.minimize(loss[0] + l2_loss, var_list=update_vars, global_step=global_step)
+    # train_op = optimizer.minimize(loss[0] + l2_loss, var_list=update_vars, global_step=global_step)
+    # apple gradient clip to avoid gradient exploding
+    gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)
+    clip_grad_var = [gv if gv[0] is None else [
+          tf.clip_by_norm(gv[0], 50.), gv[1]] for gv in gvs]
+    train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
 if args.save_optimizer:
     print('Saving optimizer parameters to checkpoint! Remember to restore the global_step in the fine-tuning afterwards.')
@@ -166,7 +171,7 @@ with tf.Session() as sess:
                 saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))
 
         # switch to validation dataset for evaluation
-        if epoch % args.val_evaluation_epoch == 0 and epoch > 0:
+        if epoch % args.val_evaluation_epoch == 0 and epoch >= args.warm_up_epoch:
             sess.run(val_init_op)
 
             val_loss_total, val_loss_xy, val_loss_wh, val_loss_conf, val_loss_class = \
@@ -187,12 +192,12 @@ with tf.Session() as sess:
 
             # calc mAP
             rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
-            gt_dict = parse_gt_rec(args.val_file, args.img_size)
+            gt_dict = parse_gt_rec(args.val_file, args.img_size, args.letterbox_resize)
 
             info = '======> Epoch: {}, global_step: {}, lr: {:.6g} <======\n'.format(epoch, __global_step, __lr)
 
             for ii in range(args.class_num):
-                npos, nd, rec, prec, ap = voc_eval(gt_dict, val_preds, ii, iou_thres=args.eval_threshold, use_07_metric=False)
+                npos, nd, rec, prec, ap = voc_eval(gt_dict, val_preds, ii, iou_thres=args.eval_threshold, use_07_metric=args.use_voc_07_metric)
                 info += 'EVAL: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(ii, rec, prec, ap)
                 rec_total.update(rec, npos)
                 prec_total.update(prec, nd)

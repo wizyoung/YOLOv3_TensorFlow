@@ -19,9 +19,10 @@ class_name_path = './data/coco.names'  # The path of the class names.
 ### Training releated numbers
 batch_size = 20
 img_size = [416, 416]  # Images will be resized to `img_size` and fed to the network, size format: [width, height]
+letterbox_resize = False  # Whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
 total_epoches = 200
 train_evaluation_step = 100  # Evaluate on the training batch after some steps.
-val_evaluation_epoch = 1  # Evaluate on the whole validation dataset after some steps. Set to None to evaluate every epoch.
+val_evaluation_epoch = 1  # Evaluate on the whole validation dataset after some epochs. Set to None to evaluate every epoch.
 save_epoch = 10  # Save the model after some epochs.
 batch_norm_decay = 0.99  # decay in bn ops
 weight_decay = 5e-4  # l2 weight decay
@@ -32,10 +33,10 @@ num_threads = 10  # Number of threads for image processing used in tf.data pipel
 prefetech_buffer = 5  # Prefetech_buffer used in tf.data pipeline.
 
 ### Learning rate and optimizer
-optimizer_name = 'adam'  # Chosen from [sgd, momentum, adam, rmsprop]
+optimizer_name = 'momentum'  # Chosen from [sgd, momentum, adam, rmsprop]
 save_optimizer = True  # Whether to save the optimizer parameters into the checkpoint file.
 learning_rate_init = 1e-3
-lr_type = 'exponential'  # Chosen from [fixed, exponential, cosine_decay, cosine_decay_restart, piecewise]
+lr_type = 'piecewise'  # Chosen from [fixed, exponential, cosine_decay, cosine_decay_restart, piecewise]
 lr_decay_epoch = 5  # Epochs after which learning rate decays. Int or float. Used when chosen `exponential` and `cosine_decay_restart` lr_type.
 lr_decay_factor = 0.96  # The learning rate decay factor. Used when chosen `exponential` lr_type.
 lr_lower_bound = 1e-6  # The minimum learning rate.
@@ -73,6 +74,7 @@ score_threshold = 0.1  # threshold of the probability of the classes in nms oper
 nms_topk = 150  # keep at most nms_topk outputs after nms
 # mAP eval
 eval_threshold = 0.5  # the iou threshold applied in mAP evaluation
+use_voc_07_metric = True  # whether to use voc 2007 evaluation metric, i.e. the 11-point metric
 
 ### parse some params
 anchors = parse_anchors(anchor_path)
