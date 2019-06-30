@@ -96,6 +96,8 @@ For example:
 ...
 ```
 
+Since so many users report to use tools like LabelImg to generate xml format annotations, I add one demo script on VOC dataset to do the convertion. Check the `misc/parse_voc_xml.py` file for more details.
+
 (2)  class_names file:
 
 Generate the `data.names` file under `./data/my_data/` directory. Each line represents a class name.

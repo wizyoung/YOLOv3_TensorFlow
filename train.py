@@ -108,7 +108,7 @@ optimizer = config_optimizer(args.optimizer_name, learning_rate)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
     # train_op = optimizer.minimize(loss[0] + l2_loss, var_list=update_vars, global_step=global_step)
-    # apple gradient clip to avoid gradient exploding
+    # apply gradient clip to avoid gradient exploding
     gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)
     clip_grad_var = [gv if gv[0] is None else [
           tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]

@@ -22,7 +22,7 @@ parser.add_argument("--anchor_path", type=str, default="./data/yolo_anchors.txt"
                     help="The path of the anchor txt file.")
 parser.add_argument("--new_size", nargs='*', type=int, default=[416, 416],
                     help="Resize the input image with `new_size`, size format: [width, height]")
-parser.add_argument("--letterbox_resize", type=lambda x: (str(x).lower() == 'true'), default=False,
+parser.add_argument("--letterbox_resize", type=lambda x: (str(x).lower() == 'true'), default=True,
                     help="Whether to use the letterbox resize.")
 parser.add_argument("--class_name_path", type=str, default="./data/coco.names",
                     help="The path of the class names.")

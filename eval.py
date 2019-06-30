@@ -28,7 +28,7 @@ parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/
 parser.add_argument("--anchor_path", type=str, default="./data/yolo_anchors.txt",
                     help="The path of the anchor txt file.")
 
-parser.add_argument("--class_name_path", type=str, default="./data/my_data/voc.names",
+parser.add_argument("--class_name_path", type=str, default="./data/coco.names",
                     help="The path of the class names.")
 
 # some numbers
@@ -36,7 +36,7 @@ parser.add_argument("--img_size", nargs='*', type=int, default=[416, 416],
                     help="Resize the input image to `img_size`, size format: [width, height]")
 
 parser.add_argument("--letterbox_resize", type=lambda x: (str(x).lower() == 'true'), default=False,
-                    help="Whether to use the letterbox resize.")
+                    help="Whether to use the letterbox resize, i.e., keep the original image aspect ratio.")
 
 parser.add_argument("--num_threads", type=int, default=10,
                     help="Number of threads for image processing used in tf.data pipeline.")
@@ -53,7 +53,7 @@ parser.add_argument("--score_threshold", type=float, default=0.01,
 parser.add_argument("--nms_topk", type=int, default=400,
                     help="Keep at most nms_topk outputs after nms.")
 
-parser.add_argument("--use_voc_07_metric", type=lambda x: (str(x).lower() == 'true'), default=True,
+parser.add_argument("--use_voc_07_metric", type=lambda x: (str(x).lower() == 'true'), default=False,
                     help="Whether to use the voc 2007 mAP metrics.")
 
 args = parser.parse_args()
