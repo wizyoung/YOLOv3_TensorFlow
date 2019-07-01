@@ -213,7 +213,7 @@ with tf.Session() as sess:
             if mAP > best_mAP:
                 best_mAP = mAP
                 saver_best.save(sess, args.save_dir + 'best_model_Epoch_{}_step_{}_mAP_{:.4f}_loss_{:.4f}_lr_{:.7g}'.format(
-                                   epoch, __global_step, best_mAP, val_loss_total.average, __lr))
+                                   epoch, int(__global_step), best_mAP, val_loss_total.average, __lr))
 
             writer.add_summary(make_summary('evaluation/val_mAP', mAP), global_step=epoch)
             writer.add_summary(make_summary('evaluation/val_recall', rec_total.average), global_step=epoch)

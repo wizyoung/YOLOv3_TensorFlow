@@ -192,7 +192,15 @@ This [paper](https://arxiv.org/abs/1902.04103) from gluon-cv has proved that dat
 
 (4) Loss nan? Setting a bigger warm_up_epoch number or smaller learning rate and try several more times. If you fine-tune the whole model, using adam may cause nan value sometimes. You can try choosing momentum optimizer.
 
-### 10. TODO
+### 10. Fine-tune on VOC dataset
+
+I did a quick train on the VOC dataset. The params I used in my experiments are included under `misc/experiments_on_voc/` folder for your reference. The train dataset is the VOC 2007 + 2012 trainval set, and the test dataset is the VOC 2007 test set.
+
+Finally with the 416\*416 input image, I got a 87.54% test mAP (not using the 07 metric). No hard-try fine-tuning. You should get the similar or better results.
+
+My pretrained weights on VOC dataset can be downloaded [here](https://drive.google.com/drive/folders/1ICKcJPozQOVRQnE1_vMn90nr7dejg0yW?usp=sharing).
+
+### 11. TODO
 
 [ ] Multi-GPUs with sync batch norm. 
 
