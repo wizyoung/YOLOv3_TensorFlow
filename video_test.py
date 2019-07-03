@@ -64,8 +64,6 @@ with tf.Session() as sess:
 
     for i in range(video_frame_cnt):
         ret, img_ori = vid.read()
-
-        img_ori = cv2.imread(args.input_image)
         if args.letterbox_resize:
             img, resize_ratio, dw, dh = letterbox_resize(img_ori, args.new_size[0], args.new_size[1])
         else:
