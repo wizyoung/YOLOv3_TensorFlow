@@ -5,7 +5,9 @@ import tensorflow as tf
 import numpy as np
 import argparse
 import cv2
+import os
 import time
+import datetime
 
 from utils.misc_utils import parse_anchors, read_class_names
 from utils.nms_utils import gpu_nms
@@ -27,6 +29,8 @@ parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/
                     help="The path of the weights to restore.")
 parser.add_argument("--save_video", type=lambda x: (str(x).lower() == 'true'), default=False,
                     help="Whether to save the video detection results.")
+parser.add_argument("--camera", type=int, default=0,
+                    help="What camera to use.")
 args = parser.parse_args()
 
 args.anchors = parse_anchors(args.anchor_path)
@@ -35,12 +39,11 @@ args.num_class = len(args.classes)
 
 color_table = get_color_table(args.num_class)
 
-vid = cv2.VideoCapture(0)
+vid = cv2.VideoCapture(args.camera)
 video_frame_cnt = int(vid.get(7))
 video_width = int(vid.get(3))
 video_height = int(vid.get(4))
 video_fps = int(vid.get(5))
-
 
 with tf.Session() as sess:
     input_data = tf.placeholder(tf.float32, [1, args.new_size[1], args.new_size[0], 3], name='input_data')
@@ -83,11 +86,18 @@ with tf.Session() as sess:
         for i in range(len(boxes_)):
             x0, y0, x1, y1 = boxes_[i]
             plot_one_box(img_ori, [x0, y0, x1, y1], label=args.classes[labels_[i]] + ', {:.2f}%'.format(scores_[i] * 100), color=color_table[labels_[i]])
-        cv2.putText(img_ori, '{:.2f}ms'.format((end_time - start_time) * 1000), (40, 40), 0,
-                    fontScale=1, color=(0, 255, 0), thickness=2)
+
+            if args.classes[labels_[i]] == 'person' and args.save_video == True:
+                thing = img_ori[int(y0):int(y1), int(x0):int(x1)]
+                cv2.imwrite('data/objects/'+str(datetime.datetime.now()) + '.jpg', thing)
+                print(thing.shape)
+
+
+
+        cv2.putText(img_ori, '{:.2f}ms'.format((end_time - start_time) * 1000), (40, 40), 0,fontScale=1, color=(0, 255, 0), thickness=2)
         cv2.imshow('image', img_ori)
-        if args.save_video:
-            videoWriter.write(img_ori)
+        #if args.save_video:
+            #videoWriter.write(img_ori)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
