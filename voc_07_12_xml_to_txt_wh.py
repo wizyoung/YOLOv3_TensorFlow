@@ -88,5 +88,5 @@ with open(txt_path_test, 'r') as fileread:
         #                                                     ->labels->{train_l, val_l, test_l}
         # final_datas_wh is what you need in the end.
         # imgs is where you put your images in, and labels is the same thing.
-        # note that you must be sure of making the same name of every iamge and label.
+        # note that you must be sure of making the same name of every image and label.
         # finally, you got the txt files, enjoy your life!!!
