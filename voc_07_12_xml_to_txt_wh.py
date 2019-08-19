@@ -81,3 +81,12 @@ with open(txt_path_test, 'r') as fileread:
         cur_line_num = line.strip().split(' ')
         if len(cur_line_num) < 5:
             print(cur_line_num[0])
+
+        # file path like:
+        # my_imgs%labels->2019->{final_datas_wh, imgs, labels}->final_datas_wh->{train.txt, val.txt, test.txt}
+        #                                                   ->imgs->{train, val, test}
+        #                                                   ->labels->{train_l, val_l, test_l}
+        # final_datas_wh is what you need in the end.
+        # imgs is where you put your images in, and labels is the same thing.
+        # note that you must be sure of making the same name of every iamge and label.
+        # finally, you got the txt files, enjoy your life!!!
