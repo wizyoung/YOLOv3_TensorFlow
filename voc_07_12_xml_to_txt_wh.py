@@ -57,6 +57,8 @@ txt_path_train = './my_imgs&labels/2019/final_datas_wh/train.txt'
 txt_path_val = './my_imgs&labels/2019/final_datas_wh/val.txt'
 txt_path_test = './my_imgs&labels/2019/final_datas_wh/test.txt'
 
+# next codelines is for 'unclear boxes' postprecessing.
+# the lines shown is where you should delete, it's my suggestion.
 with open(txt_path_train, 'r') as fileread:
     while True:
         line = fileread.readline()
