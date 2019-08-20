@@ -90,3 +90,4 @@ with open(txt_path_test, 'r') as fileread:
         # imgs is where you put your images in, and labels is the same thing.
         # note that you must be sure of making the same name of every image and label.
         # finally, you got the txt files, enjoy your life!!!
+        # more info: https://blog.csdn.net/qq_43322615/article/details/94567969
