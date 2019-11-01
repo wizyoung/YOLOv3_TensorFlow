@@ -11,7 +11,7 @@ from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
 
 class yolov3(object):
 
-    def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
+    def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=False):
 
         # self.anchors = [[10, 13], [16, 30], [33, 23],
                          # [30, 61], [62, 45], [59,  119],
