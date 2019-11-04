@@ -44,8 +44,8 @@ with tf.Session() as sess:
         output_node_names.split(",")
     )
 
-    with tf.gfile.GFile('./yolov3_frozen_graph_batch.pb', "wb") as f:
+    with tf.gfile.GFile('./data/darknet_weights/yolov3_frozen_graph_batch.pb', "wb") as f:
         f.write(output_graph_def.SerializeToString())
 
-    print("{} ops written to {}.".format(len(output_graph_def.node), './yolov3_frozen_graph_batch.pb'))
+    print("{} ops written to {}.".format(len(output_graph_def.node), './data/darknet_weights/yolov3_frozen_graph_batch.pb'))
 
