@@ -7,7 +7,7 @@ from __future__ import division, print_function
 import tensorflow as tf
 slim = tf.contrib.slim
 
-from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
+from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer, _padding_layer, new_region, same_region, same_net_region, _full_pad, _zero_pad, _none_pad
 
 class yolov3(object):
 
@@ -27,7 +27,7 @@ class yolov3(object):
         # static_shape is slightly faster
         self.use_static_shape = use_static_shape
 
-    def forward(self, inputs, is_training=False, reuse=False):
+    def forward(self, inputs, pad, input_n1, input_n2, input_n3, input_n4, input_n5, input_n6, input_n7, input_n8, input_n9, input_n10, input_n11, input_n12, input_n13, input_n14, input_n15, input_n16, input_n17, input_n18, input_n19, input_n20, input_n21, input_n22, input_n23, input_n24, input_n25, input_n26, input_n27, input_n28, input_n29, input_n30, input_n32, input_n34, input_n37, input_n39, input_n41, input_n44, input_n46, input_n48, input_u1, input_u2, region, is_training=False, reuse=False):
         # the input img_size, form: [height, weight]
         # it will be used later
         self.img_size = tf.shape(inputs)[1:3]
@@ -48,28 +48,55 @@ class yolov3(object):
                                 activation_fn=lambda x: tf.nn.leaky_relu(x, alpha=0.1),
                                 weights_regularizer=slim.l2_regularizer(self.weight_decay)):
                 with tf.variable_scope('darknet53_body'):
-                    route_1, route_2, route_3 = darknet53_body(inputs)
+                    region_1, region_2, region_3, net1, net2, net3, net4, net5, net6, net7, net8, net9, net10, net11, net12, net13, net14, net15, net16, net17, net18, net19, net20, net21, net22, net23, net24, net25, net26, net27, net28, net29 = darknet53_body(inputs, pad, input_n1, input_n2, input_n3, input_n4, input_n5, input_n6, input_n7, input_n8, input_n9, input_n10, input_n11, input_n12, input_n13, input_n14, input_n15, input_n16, input_n17, input_n18, input_n19, input_n20, input_n21, input_n22, input_n23, input_n24, input_n25, input_n26, input_n27, input_n28, input_n29, region)
+                    for i in range(1, 30):
+                        locals()['net' + str(i)] = tf.identity(locals()['net' + str(i)], name='net+str(i)')
 
                 with tf.variable_scope('yolov3_head'):
-                    inter1, net = yolo_block(route_3, 512)
-                    feature_map_1 = slim.conv2d(net, 3 * (5 + self.class_num), 1,
+                    net30, net32, net34, yb_region1, net35, region1 = yolo_block(net29, 512, input_n30, input_n32, input_n34, region_3, pad)
+                    feature_map_1 = slim.conv2d(net35, 3 * (5 + self.class_num), 1,
                                                 stride=1, normalizer_fn=None,
                                                 activation_fn=None, biases_initializer=tf.zeros_initializer())
+                    feature_map_1 = tf.cond(pad, lambda: _none_pad(feature_map_1), lambda: _zero_pad(feature_map_1, region1, 13))
                     feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')
+                    # concat feature_map_1
 
-                    inter1 = conv2d(inter1, 256, 1)
-                    inter1 = upsample_layer(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
-                    concat1 = tf.concat([inter1, route_2], axis=3)
 
-                    inter2, net = yolo_block(concat1, 256)
-                    feature_map_2 = slim.conv2d(net, 3 * (5 + self.class_num), 1,
+                    net36 = conv2d(net34, 256, 1)
+                    net24 = tf.cond(pad, lambda: _none_pad(net24), lambda: _full_pad(net24, region_2, 26))
+                    # store inter1, as net_u1, (input_u1), the first upsampling
+                    inter1 = upsample_layer(net36, net24.get_shape().as_list() if self.use_static_shape else tf.shape(net24))
+                    inter1 = tf.cond(pad, lambda: _none_pad(inter1), lambda: _full_pad(inter1, yb_region1, input_u1))
+                    concat1 = tf.concat([inter1, net24], axis=3)
+                    xmin = tf.minimum(region_2[0], yb_region1[0])
+                    ymin = tf.minimum(region_2[1], yb_region1[1])
+                    xmax = tf.maximum(region_2[2], yb_region1[2])
+                    ymax = tf.maximum(region_2[3], yb_region1[3])
+                    region_con1 = [xmin, ymin, xmax, ymax]
+
+                    net37, net39, net41, yb_region2, net42, region2 = yolo_block(concat1, 256, input_n37, input_n39, input_n41, 26, region_con1, pad)
+                    feature_map_2 = slim.conv2d(net42, 3 * (5 + self.class_num), 1,
                                                 stride=1, normalizer_fn=None,
                                                 activation_fn=None, biases_initializer=tf.zeros_initializer())
+                    feature_map_2 = tf.cond(pad, _none_pad(feature_map_2), _zero_pad(feature_map_2, region2, 26))
                     feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
 
-                    inter2 = conv2d(inter2, 128, 1)
-                    inter2 = upsample_layer(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
-                    concat2 = tf.concat([inter2, route_1], axis=3)
+                    inter2 = conv2d(net41, 128, 1)   # net43
+                    inter2 = upsample_layer(inter2, net15.get_shape().as_list() if self.use_static_shape else tf.shape(net15))
+                    inter2 = tf.cond(pad, lambda: _none_pad(inter2), lambda: _full_pad(inter2, yb_region2, input_u2))
+                    concat2 = tf.concat([inter2, net15], axis=3)
+                    xmin = tf.minimum(region_1[0], yb_region2[0])
+                    ymin = tf.minimum(region_1[1], yb_region2[1])
+                    xmax = tf.maximum(region_1[2], yb_region2[2])
+                    ymax = tf.maximum(region_1[3], yb_region2[3])
+                    region_con2 = [xmin, ymin, xmax, ymax]
+                    net44, net46, net48, yb_region3, net49, region3 = yolo_block(concat2, 128, input_n44, input_n46, input_n48, 52, region_con2, pad)
+                    feature_map_3 = slim.conv2d(net49, 3 * (5 + self.class_num), 1,
+                                                stride=1, normalizer_fn=None,
+                                                activation_fn=None, biases_initializer=tf.zeros_initializer())
+                    feature_map_3 = tf.cond(pad, _none_pad(feature_map_3), _zero_pad(feature_map_3, region3, 52))
+                    feature_map_3 = tf.identity(feature_map_3, name='feature_map_3')
+
 
                     _, feature_map_3 = yolo_block(concat2, 128)
                     feature_map_3 = slim.conv2d(feature_map_3, 3 * (5 + self.class_num), 1,
@@ -77,7 +104,12 @@ class yolov3(object):
                                                 activation_fn=None, biases_initializer=tf.zeros_initializer())
                     feature_map_3 = tf.identity(feature_map_3, name='feature_map_3')
 
-            return feature_map_1, feature_map_2, feature_map_3
+                    for i in range(30, 49):
+                        if i != 31 or i != 33 or i !=35 or i != 36 or i!= 38 or i != 40 or i != 42 or i != 43 or i != 45 or i != 47:
+                            locals()['net' + str(i)] = tf.identity(locals()['net' + str(i)], name='net+str(i)')
+                    inter1 = tf.identity(inter1, name='inter1')
+                    inter2 = tf.identity(inter2, name='inter2')
+            return feature_map_1, feature_map_2, feature_map_3, net1, net2, net3, net4, net5, net6, net7, net8, net9, net10, net11, net12, net13, net14, net15, net16, net17, net18, net19, net20, net21, net22, net23, net24, net25, net26, net27, net28, net29, net30, net32, net34, net37, net39, net41, net44, net46, net48, inter1, inter2
 
     def reorg_layer(self, feature_map, anchors):
         '''
