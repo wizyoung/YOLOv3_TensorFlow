@@ -45,7 +45,7 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thre
     score = tf.concat(score_list, axis=0)
     label = tf.concat(label_list, axis=0)
 
-    return boxes, score, label
+    return tf.identity(boxes, name='output/boxes'), tf.identity(score,name='output/scores'), tf.identity(label, name='output/labels')
 
 
 def py_nms(boxes, scores, max_boxes=50, iou_thresh=0.5):
@@ -121,3 +121,27 @@ def cpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thre
     label = np.concatenate(picked_label, axis=0)
 
     return boxes, score, label
+
+def batch_nms(boxes, scores, max_boxes=20, score_thresh=0.5, nms_thresh=0.5):
+    """
+    Perform batch NMS on GPU using TensorFlow.
+
+    params:
+        boxes: tensor of shape [batch_size, num_anchors, 4] # num_anchors=10647=(13*13+26*26+52*52)*3, for input 416*416 image
+        scores: tensor of shape [batch_size, num_anchors, num_classes], score=conf*prob
+        max_boxes: integer, maximum number of predicted boxes you'd like, default is 20
+        score_thresh: if [ highest class probability score < score_threshold]
+                        then get rid of the corresponding box
+        nms_thresh: real value, "intersection over union" threshold used for NMS filtering
+    """
+    # make shape valid for tf.image.combined_non_max_suppression()
+    boxes = tf.expand_dims(boxes, 2) # boxes now is [bs, na, 1, 4]
+    boxes, scores, labels, valid_num_detections = tf.image.combined_non_max_suppression(boxes = boxes,
+                                                                                        scores = scores,
+                                                                                        max_output_size_per_class = 5,
+                                                                                        max_total_size = max_boxes,
+                                                                                        iou_threshold = nms_thresh,
+                                                                                        score_threshold = score_thresh,
+                                                                                        pad_per_class = False,
+                                                                                        clip_boxes = False)
+    return tf.identity(boxes, name='output/boxes'), tf.identity(scores, name='output/scores'), tf.identity(labels, name='output/labels'), tf.identity(valid_num_detections, name='output/num_detections')

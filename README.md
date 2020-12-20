@@ -33,7 +33,11 @@ The pretrained darknet weights file can be downloaded [here](https://pjreddie.co
 python convert_weight.py
 ```
 
-Then the converted TensorFlow checkpoint file will be saved to `./data/darknet_weights/` directory.
+If you want to convert weights to frozen graph:
+```shell
+python export_frozen_graph.py
+```
+Then the converted TensorFlow checkpoint(and frozen graph) file will be saved to `./data/darknet_weights/` directory.
 
 You can also download the converted TensorFlow checkpoint file by me via [[Google Drive link](https://drive.google.com/drive/folders/1mXbNgNxyXPi7JNsnBaxEv1-nWr7SVoQt?usp=sharing)] or [[Github Release](https://github.com/wizyoung/YOLOv3_TensorFlow/releases/)] and then place it to the same directory.
 
@@ -45,6 +49,10 @@ Single image test demo:
 
 ```shell
 python test_single_image.py ./data/demo_data/messi.jpg
+```
+Batch images test demo(using frozen graph):
+```shell
+python test_batch_images.py ./data/demo_data/
 ```
 
 Video test demo:
