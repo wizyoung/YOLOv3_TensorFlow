@@ -140,7 +140,7 @@ def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
         img, boxes = mix_up(img1, img2, boxes1, boxes2)
         labels = np.concatenate((labels1, labels2))
 
-    if mode == 'train':
+    if str(mode) == 'train':
         # random color jittering
         # NOTE: applying color distort may lead to bad performance sometimes
         img = random_color_distort(img)

@@ -1,5 +1,10 @@
 #  YOLOv3_TensorFlow
 
+**NOTE:** This repo is no longer maintained (actually I dropped the support for a long time) as I have switched to PyTorch for one year. Life is short, I use PyTorch.
+
+
+--------
+
 ### 1. Introduction
 
 This is my implementation of [YOLOv3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) in pure TensorFlow. It contains the full pipeline of training and evaluation on your own dataset. The key features of this repo are:
